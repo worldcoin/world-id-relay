@@ -6,7 +6,7 @@ use ethers::types::{Bytes, TransactionRequest, H160, H256, U256};
 use eyre::{self};
 use tokio::time::Duration;
 
-use crate::abis::IStateBridge;
+use crate::abi::IStateBridge;
 
 pub const FIVE_SECONDS: Duration = Duration::from_secs(5);
 
