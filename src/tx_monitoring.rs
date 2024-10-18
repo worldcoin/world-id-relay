@@ -12,7 +12,8 @@ use tx_sitter_client::TxSitterClient;
 const MAX_ATTEMPTS: usize = 100;
 const ATTEMPT_SLEEP: Duration = Duration::from_secs(5);
 
-static ZERO_ADDRESS: &str = "0x0000000000000000000000000000000000000000000000000000000000000000";
+static ZERO_ADDRESS: &str =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 /// This function monitors a transaction on the Optimism chain.
 /// It will wait until the transaction either fails or succeeds.
@@ -58,7 +59,8 @@ async fn get_tx(
     tracing::info!("Getting tx for id {}", tx_id);
 
     loop {
-        let tx: TxSitterTransaction = tx_sitter_client.get_transaction_by_id(tx_id).await?;
+        let tx: TxSitterTransaction =
+            tx_sitter_client.get_transaction_by_id(tx_id).await?;
 
         // Transactions are initially created with zero address as tx_hash
         if tx.tx_hash == ZERO_ADDRESS {
@@ -66,7 +68,9 @@ async fn get_tx(
             if num_attempts >= MAX_ATTEMPTS {
                 eyre::bail!("Wasn't able to get transaction hash");
             } else {
-                tracing::warn!("Waiting for transaction to be broadcast, retrying");
+                tracing::warn!(
+                    "Waiting for transaction to be broadcast, retrying"
+                );
                 tokio::time::sleep(ATTEMPT_SLEEP).await;
             }
         } else {
