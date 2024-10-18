@@ -1,4 +1,5 @@
-pub mod abis;
+pub mod abi;
+pub mod block_scanner;
 pub mod config;
 pub mod transaction;
 pub mod tx_monitoring;
@@ -6,15 +7,22 @@ pub mod tx_sitter;
 pub mod utils;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use alloy::providers::Provider as _;
+use alloy::rpc::types::Filter;
+use alloy::sol_types::SolEvent;
 use clap::Parser;
 use color_eyre::eyre::Result;
+use futures::StreamExt;
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+use self::abi::IWorldIDIdentityManager::TreeChanged;
+use self::block_scanner::BlockScanner;
 use self::config::Config;
 
 /// This service syncs the state of the World Tree and spawns a server that can deliver inclusion proofs for a given identity.
@@ -77,6 +85,36 @@ pub async fn main() -> Result<()> {
     run(config).await
 }
 
-pub async fn run(_config: Config) -> Result<()> {
-    todo!()
+pub async fn run(config: Config) -> Result<()> {
+    let provider = Arc::new(config.canonical_network.provider.provider());
+    let chain_id = provider.get_chain_id().await?;
+
+    let latest_block_number = provider.get_block_number().await?;
+
+    // Start in the past by approximately 1 hour
+    // TODO: Make this configurable
+    let start_block_number =
+        latest_block_number.checked_sub(300).unwrap_or_default();
+
+    let filter = Filter::new()
+        .address(config.canonical_network.address)
+        .event_signature(TreeChanged::SIGNATURE_HASH);
+
+    let scanner = BlockScanner::new(
+        provider.clone(),
+        config.canonical_network.provider.window_size,
+        start_block_number,
+        filter,
+    )
+    .await?;
+
+    tracing::info!(chain_id, latest_block_number, "Starting ingestion");
+    scanner
+        .root_stream()
+        .for_each(|x| async move {
+            println!("{:#?}", x);
+        })
+        .await;
+
+    Ok(())
 }
