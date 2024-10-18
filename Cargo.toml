@@ -37,9 +37,6 @@ serde_json = "1.0"
 serde_path_to_error = "0.1.16"
 take_mut = "0.2.2"
 telemetry-batteries = { git = "https://github.com/worldcoin/telemetry-batteries.git" }
-semaphore = { git = "https://github.com/worldcoin/semaphore-rs", rev = "59b2a0af2e156dafeb15d35b07fc283edb8859f2", features = [
-    "depth_20",
-] }
 thiserror = "1.0"
 tokio = { version = "1.34.0", features = ["sync", "macros", "rt-multi-thread"] }
 toml = "0.8"
@@ -52,6 +49,9 @@ indicatif = "0.17.8"
 reqwest = { version = "0.12", features = ["json"] }
 statrs = "0.17.1"
 tokio-retry = "0.3.0"
+semaphore = { git = "https://github.com/worldcoin/semaphore-rs", rev = "d0d1f899add7116ccc1228f5e5e5ee2e2e233768", features = [
+    "depth_30",
+] }
 
 [dev-dependencies]
 tempfile = "3.10.1"

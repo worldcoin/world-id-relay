@@ -45,6 +45,15 @@ sol! {
         function receiveRoot(uint256 newRoot) external;
     }
 
+    #[sol(rpc)]
+    contract IOptimismStateBridge {
+        function opWorldIDaddress() external returns (address);
+    }
+
+    #[sol(rpc)]
+    contract IPolygonStateBridge {
+        function fxChildTunnel() external returns (address);
+    }
     // TODO: Switch over to alloy types.
     //
     // #[sol(rpc, abi)]
