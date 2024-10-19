@@ -94,7 +94,7 @@ pub async fn run(config: Config) -> Result<()> {
     // Start in the past by approximately 1 hour
     // TODO: Make this configurable
     let start_block_number =
-        latest_block_number.checked_sub(300).unwrap_or_default();
+        latest_block_number.checked_sub(600).unwrap_or_default();
 
     let filter = Filter::new()
         .address(config.canonical_network.address)

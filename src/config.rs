@@ -14,6 +14,7 @@ pub struct Config {
     /// The network from which roots will be propagated
     pub canonical_network: NetworkConfig,
     /// The networks to which roots will be propagated
+    #[serde(default)]
     pub bridged_networks: Vec<NetworkConfig>,
     #[serde(default)]
     pub telemetry: Option<TelemetryConfig>,
