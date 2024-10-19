@@ -1,0 +1,20 @@
+[canonical_network]
+type = "evm"
+name = "Ethereum Mainnet"
+address = "0x87584289Fac5116180938bB0921caC1848A3d6fE"
+provider = { rpc_endpoint = "https://eth.llamarpc.com" }
+wallet = { type = "mnemonic", mnemonic = "your mnemonic here" }
+
+[[bridged_networks]]
+type = "evm"
+name = "Ethereum Mainnet"
+address = "0x87584289Fac5116180938bB0921caC1848A3d6fE"
+provider = { rpc_endpoint = "https://eth.llamarpc.com" }
+wallet = { type = "mnemonic", mnemonic = "your mnemonic here" }
+
+[[bridged_networks]]
+type = "evm"
+name = "Ethereum Mainnet"
+address = "0x87584289Fac5116180938bB0921caC1848A3d6fE"
+provider = { rpc_endpoint = "https://eth.llamarpc.com" }
+wallet = { type = "mnemonic", mnemonic = "your mnemonic here" }

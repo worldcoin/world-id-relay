@@ -10,7 +10,7 @@ use alloy::providers::Provider;
 use alloy::rpc::types::{Filter, Log};
 use alloy::sol_types::SolEvent;
 use alloy::transports::Transport;
-use color_eyre::Result;
+use eyre::Result;
 use futures::{stream, FutureExt as _, Stream, StreamExt as _};
 
 use crate::abi::IWorldIDIdentityManager::TreeChanged;

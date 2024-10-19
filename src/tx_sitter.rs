@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use eyre::eyre;
+use eyre::eyre::{bail, eyre};
 use tx_sitter_client::data::TxStatus;
 use tx_sitter_client::TxSitterClient;
 
@@ -37,7 +37,7 @@ pub async fn monitor_tx(
             _ => {
                 num_attempts += 1;
                 if num_attempts >= MAX_ATTEMPTS {
-                    eyre::bail!("Wasn't able to get transaction hash");
+                    bail!("Wasn't able to get transaction hash");
                 } else {
                     tracing::warn!(
                         "Waiting for transaction to be broadcast, retrying"

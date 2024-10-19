@@ -4,15 +4,13 @@ use std::sync::Arc;
 use alloy::primitives::Address;
 use alloy::providers::Provider;
 use alloy::transports::Transport;
-use axum::async_trait;
 use eyre::Result;
 use semaphore::Field;
 use tokio::sync::mpsc::Receiver;
 
 use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
 
-#[async_trait]
-pub trait Relay {
+pub(crate) trait Relay {
     /// Propogate a new Root to the State Bridge for the given network.
     async fn propagate_root(&self, root: Field) -> Result<()>;
 
@@ -48,7 +46,6 @@ where
     }
 }
 
-#[async_trait]
 impl<T, P> Relay for OptimismRelayer<T, P>
 where
     T: Transport + Clone,
@@ -72,7 +69,6 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct BaseRelayer<T, P>
 where
     T: Transport + Clone,
@@ -100,7 +96,6 @@ where
     }
 }
 
-#[async_trait]
 impl<T, P> Relay for BaseRelayer<T, P>
 where
     T: Transport + Clone,
@@ -152,7 +147,6 @@ where
     }
 }
 
-#[async_trait]
 impl<T, P> Relay for WorldChainRelayer<T, P>
 where
     T: Transport + Clone,
@@ -204,7 +198,6 @@ where
     }
 }
 
-#[async_trait]
 impl<T, P> Relay for PolygonRelayer<T, P>
 where
     T: Transport + Clone,
