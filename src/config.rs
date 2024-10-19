@@ -5,7 +5,6 @@ use alloy::providers::{ProviderBuilder, RootProvider};
 use alloy::rpc::client::ClientBuilder;
 use alloy::transports::http::Http;
 use alloy::transports::layers::{RetryBackoffLayer, RetryBackoffService};
-use ethers::types::H160;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -66,7 +65,7 @@ pub enum WalletConfig {
     },
     TxSitter {
         url: String,
-        address: H160,
+        address: Address,
         gas_limit: Option<u64>,
     },
 }
