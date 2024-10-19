@@ -12,7 +12,7 @@ use alloy::providers::Provider as _;
 use alloy::rpc::types::Filter;
 use alloy::sol_types::SolEvent;
 use clap::Parser;
-use color_eyre::eyre::Result;
+use eyre::eyre::Result;
 use futures::StreamExt;
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
@@ -26,7 +26,7 @@ use self::config::Config;
 
 /// This service syncs the state of the World Tree and spawns a server that can deliver inclusion proofs for a given identity.
 #[derive(Parser, Debug)]
-#[clap(name = "Tree Availability Service")]
+#[clap(name = "World Id Relay")]
 #[clap(version)]
 struct Opts {
     /// Path to the configuration file
@@ -40,6 +40,7 @@ struct Opts {
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
+    eyre::install()?;
     dotenv::dotenv().ok();
 
     let opts = Opts::parse();

@@ -44,7 +44,8 @@ impl Config {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NetworkConfig {
-    pub kind: NetworkKind,
+    #[serde(rename = "type")]
+    pub ty: NetworkType,
     pub name: String,
     pub address: Address,
     pub provider: ProviderConfig,
@@ -52,13 +53,15 @@ pub struct NetworkConfig {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum NetworkKind {
+#[serde(rename_all = "snake_case")]
+pub enum NetworkType {
     Evm,
     Svm,
     Scroll,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum WalletConfig {
     Mnemonic {
         mnemonic: String,
