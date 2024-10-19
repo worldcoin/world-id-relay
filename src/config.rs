@@ -5,6 +5,7 @@ use alloy::providers::{ProviderBuilder, RootProvider};
 use alloy::rpc::client::ClientBuilder;
 use alloy::transports::http::Http;
 use alloy::transports::layers::{RetryBackoffLayer, RetryBackoffService};
+use ethers::types::H160;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -48,10 +49,7 @@ pub struct NetworkConfig {
     pub name: String,
     pub address: Address,
     pub provider: ProviderConfig,
-    pub send_lambda_name: String,
-    pub rpc_lambda_name: String,
-    pub transactions_lambda_name: String,
-    pub relayer_id: String,
+    pub wallet: WalletConfig,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -59,6 +57,18 @@ pub enum NetworkKind {
     Evm,
     Svm,
     Scroll,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum WalletConfig {
+    Mnemonic {
+        mnemonic: String,
+    },
+    TxSitter {
+        url: String,
+        address: H160,
+        gas_limit: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

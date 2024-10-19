@@ -126,12 +126,11 @@ where
         )
     }
 
-    /// Ingests the canonical logs from the mainnet contract
-    /// Saves the ingested data into the database
+    /// Creates a stream of `TreeChanged` events
     pub fn root_stream(&self) -> impl Stream<Item = TreeChanged> + '_ {
-        self.block_stream().flat_map(|logs| {
+        self.block_stream().buffered(10).flat_map(|logs| {
             let fut = async move {
-                let logs: Vec<Log> = logs.await.unwrap();
+                let logs: Vec<Log> = logs.unwrap();
                 stream::iter(logs.into_iter().filter_map(|log| {
                     TreeChanged::decode_log(&log.inner, false)
                         .ok()

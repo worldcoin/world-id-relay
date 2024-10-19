@@ -27,7 +27,7 @@ governor = "0.6.0"
 hex = "0.4"
 ethers = { version = "2.0.10", features = ["ws", "ipc", "openssl", "abigen"] }
 hyper = { version = "1", features = ["server", "http1", "http2"] }
-tx-sitter-client = "1.0.10"
+tx-sitter-client = { git = "https://github.com/worldcoin/signup-sequencer", rev = "f30275b" }
 maplit = "1.0.2"
 rand = { version = "0.8.5", features = ["small_rng"] }
 rayon = "1.10.0"

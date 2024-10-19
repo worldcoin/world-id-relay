@@ -1,6 +1,9 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::marker::PhantomData;
+use std::sync::Arc;
 
-use alloy::{primitives::Address, providers::Provider, transports::Transport};
+use alloy::primitives::Address;
+use alloy::providers::Provider;
+use alloy::transports::Transport;
 use axum::async_trait;
 use eyre::Result;
 use semaphore::Field;
@@ -51,7 +54,7 @@ where
     T: Transport + Clone,
     P: Provider<T> + 'static,
 {
-    async fn propagate_root(&self, root: Field) -> Result<()> {
+    async fn propagate_root(&self, _root: Field) -> Result<()> {
         todo!()
     }
 
@@ -103,7 +106,7 @@ where
     T: Transport + Clone,
     P: Provider<T> + 'static,
 {
-    async fn propagate_root(&self, root: Field) -> Result<()> {
+    async fn propagate_root(&self, _root: Field) -> Result<()> {
         todo!()
     }
 
@@ -155,7 +158,7 @@ where
     T: Transport + Clone,
     P: Provider<T> + 'static,
 {
-    async fn propagate_root(&self, root: Field) -> Result<()> {
+    async fn propagate_root(&self, _root: Field) -> Result<()> {
         todo!()
     }
 
@@ -207,7 +210,7 @@ where
     T: Transport + Clone,
     P: Provider<T> + 'static,
 {
-    async fn propagate_root(&self, root: Field) -> Result<()> {
+    async fn propagate_root(&self, _root: Field) -> Result<()> {
         todo!()
     }
 
