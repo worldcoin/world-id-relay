@@ -5,9 +5,11 @@ pub mod relay;
 pub mod tx_sitter;
 pub mod utils;
 
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use abi::IStateBridge::IStateBridgeInstance;
 use alloy::network::EthereumWallet;
-
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::types::Filter;
 use alloy::signers::local::MnemonicBuilder;
@@ -17,10 +19,8 @@ use clap::Parser;
 use config::{NetworkType, WalletConfig};
 use eyre::eyre::Result;
 use futures::StreamExt;
-use relay::signer::{AlloySigner, RelaySigner};
+use relay::signer::{AlloySigner, Signer};
 use relay::{EVMRelay, Relayer};
-use std::path::PathBuf;
-use std::sync::Arc;
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
@@ -126,9 +126,7 @@ pub async fn run(config: Config) -> Result<()> {
     Ok(())
 }
 
-fn init_relays(
-    cfg: Config,
-) -> Result<Vec<Relayer<impl RelaySigner, impl RelaySigner>>> {
+fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
     let mut relayers = Vec::new();
     cfg.bridged_networks.iter().for_each(|n| match n.ty {
         NetworkType::Evm => {
@@ -154,13 +152,11 @@ fn init_relays(
 
                     let signer = AlloySigner::new(state_bridge);
 
-                    relayers.push(Relayer::<_, AlloySigner>::Evm(
-                        EVMRelay::new(
-                            signer,
-                            n.world_id_address,
-                            n.provider.rpc_endpoint.clone(),
-                        ),
-                    ));
+                    relayers.push(Relayer::Evm(EVMRelay::new(
+                        Signer::Alloy(signer),
+                        n.world_id_address,
+                        n.provider.rpc_endpoint.clone(),
+                    )));
                 }
                 _ => unimplemented!(),
             };
