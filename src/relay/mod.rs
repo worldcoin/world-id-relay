@@ -1,3 +1,5 @@
+pub mod signer;
+
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -6,14 +8,10 @@ use alloy::providers::Provider;
 use alloy::transports::Transport;
 use eyre::Result;
 use semaphore::Field;
+use signer::RelaySigner;
 use tokio::sync::mpsc::Receiver;
 
 use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
-
-pub trait RelaySigner {
-    /// Propogate a new Root to the State Bridge for the given network.
-    async fn propagate_root(&self, root: Field) -> Result<()>;
-}
 
 pub(crate) trait Relay {
     /// Subscribe to the stream of new Roots on L1.
@@ -66,7 +64,7 @@ where
         while let Some(field) = rx.recv().await {
             let latest = self.op_world_id.latestRoot().await?._0;
             if latest != field {
-                self.signer.propagate_root(field).await?;
+                self.signer.propagate_root().await?;
             }
         }
         Ok(())
@@ -118,7 +116,7 @@ where
         while let Some(field) = rx.recv().await {
             let latest = self.op_world_id.latestRoot().await?._0;
             if latest != field {
-                self.signer.propagate_root(field).await?;
+                self.signer.propagate_root().await?;
             }
         }
         Ok(())
@@ -171,7 +169,7 @@ where
         while let Some(field) = rx.recv().await {
             let latest = self.op_world_id.latestRoot().await?._0;
             if latest != field {
-                self.signer.propagate_root(field).await?;
+                self.signer.propagate_root().await?;
             }
         }
         Ok(())
@@ -224,7 +222,7 @@ where
         while let Some(field) = rx.recv().await {
             let latest = self.op_world_id.latestRoot().await?._0;
             if latest != field {
-                self.signer.propagate_root(field).await?;
+                self.signer.propagate_root().await?;
             }
         }
         Ok(())
