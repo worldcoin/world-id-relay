@@ -59,6 +59,7 @@ impl Relay for EVMRelay {
             self.world_id_address,
             l2_provider,
         ));
+
         loop {
             let field = rx.recv().await?;
             let world_id = world_id_instance.clone();
@@ -67,7 +68,6 @@ impl Relay for EVMRelay {
                 self.signer.propagate_root().await?;
             }
         }
-        Ok(())
     }
 }
 

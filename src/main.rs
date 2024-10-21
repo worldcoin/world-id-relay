@@ -132,10 +132,10 @@ pub async fn run(config: Config) -> Result<()> {
 
     scanner
         .root_stream()
-        .for_each(|x| {
+        .for_each(|event| {
             let tx = tx.clone();
             async move {
-                let field = x.postRoot;
+                let field = event.postRoot;
                 if let Err(e) = tx.send(field) {
                     tracing::error!(?e, "Error sending root");
                 }
