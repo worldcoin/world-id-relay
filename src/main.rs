@@ -5,9 +5,11 @@ pub mod relay;
 pub mod tx_sitter;
 pub mod utils;
 
+use std::path::PathBuf;
+use std::sync::Arc;
+
 use abi::IStateBridge::IStateBridgeInstance;
 use alloy::network::EthereumWallet;
-
 use alloy::providers::{Provider as _, ProviderBuilder};
 use alloy::rpc::types::Filter;
 use alloy::signers::local::MnemonicBuilder;
@@ -19,8 +21,6 @@ use eyre::eyre::Result;
 use futures::StreamExt;
 use relay::signer::{AlloySigner, RelaySigner};
 use relay::{EVMRelay, Relayer};
-use std::path::PathBuf;
-use std::sync::Arc;
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
@@ -98,10 +98,10 @@ pub async fn run(config: Config) -> Result<()> {
 
     let latest_block_number = provider.get_block_number().await?;
 
-    // Start in the past by approximately 1 hour
-    // TODO: Make this configurable
-    let start_block_number =
-        latest_block_number.checked_sub(600).unwrap_or_default();
+    // Start in the past by approximately 2 hours
+    let start_block_number = latest_block_number
+        .checked_sub(config.start_scan)
+        .unwrap_or_default();
 
     let filter = Filter::new()
         .address(config.canonical_network.address)
