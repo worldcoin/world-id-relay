@@ -49,6 +49,10 @@ pub struct NetworkConfig {
     pub ty: NetworkType,
     pub name: String,
     pub address: Address,
+    #[serde(default)]
+    pub state_bridge_address: Address,
+    #[serde(default)]
+    pub world_id_address: Address,
     pub provider: ProviderConfig,
     pub wallet: WalletConfig,
 }

@@ -5,15 +5,22 @@ pub mod relay;
 pub mod tx_sitter;
 pub mod utils;
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use abi::IStateBridge::IStateBridgeInstance;
+use alloy::network::EthereumWallet;
 
-use alloy::providers::Provider as _;
+use alloy::providers::{Provider as _, ProviderBuilder};
 use alloy::rpc::types::Filter;
+use alloy::signers::local::MnemonicBuilder;
 use alloy::sol_types::SolEvent;
+use alloy_signer_local::coins_bip39::English;
 use clap::Parser;
+use config::{NetworkType, WalletConfig};
 use eyre::eyre::Result;
 use futures::StreamExt;
+use relay::signer::{AlloySigner, RelaySigner};
+use relay::{EVMRelay, Relayer};
+use std::path::PathBuf;
+use std::sync::Arc;
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
@@ -117,4 +124,49 @@ pub async fn run(config: Config) -> Result<()> {
         .await;
 
     Ok(())
+}
+
+fn init_relays(
+    cfg: Config,
+) -> Result<Vec<Relayer<impl RelaySigner, impl RelaySigner>>> {
+    let mut relayers = Vec::new();
+    cfg.bridged_networks.iter().for_each(|n| match n.ty {
+        NetworkType::Evm => {
+            match &cfg.canonical_network.wallet {
+                WalletConfig::Mnemonic { mnemonic } => {
+                    let signer = MnemonicBuilder::<English>::default()
+                        .phrase(mnemonic)
+                        .index(0)
+                        .unwrap()
+                        .build()
+                        .expect("Failed to build wallet");
+                    let wallet = EthereumWallet::new(signer);
+                    let l1_provider = ProviderBuilder::default()
+                        .with_recommended_fillers()
+                        .wallet(wallet)
+                        .on_http(
+                            cfg.canonical_network.provider.rpc_endpoint.clone(),
+                        );
+                    let state_bridge = IStateBridgeInstance::new(
+                        n.state_bridge_address,
+                        l1_provider,
+                    );
+
+                    let signer = AlloySigner::new(state_bridge);
+
+                    relayers.push(Relayer::<_, AlloySigner>::Evm(
+                        EVMRelay::new(
+                            signer,
+                            n.world_id_address,
+                            n.provider.rpc_endpoint.clone(),
+                        ),
+                    ));
+                }
+                _ => unimplemented!(),
+            };
+        }
+        _ => {}
+    });
+
+    Ok(relayers)
 }
