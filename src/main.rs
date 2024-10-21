@@ -19,6 +19,7 @@ use alloy_signer_local::coins_bip39::English;
 use clap::Parser;
 use config::{NetworkType, WalletConfig};
 use eyre::eyre::Result;
+use futures::future::join_all;
 use futures::StreamExt;
 use relay::signer::{AlloySigner, Signer};
 use relay::{EVMRelay, Relay, Relayer};
@@ -130,21 +131,29 @@ pub async fn run(config: Config) -> Result<()> {
         }));
     }
 
-    scanner
-        .root_stream()
-        .for_each(|event| {
-            let tx = tx.clone();
-            async move {
-                let field = event.postRoot;
-                if let Err(e) = tx.send(field) {
-                    tracing::error!(?e, "Error sending root");
+    let scanner_fut = async {
+        scanner
+            .root_stream()
+            .for_each(|event| {
+                let tx = tx.clone();
+                async move {
+                    let field = event.postRoot;
+                    if let Err(e) = tx.send(field) {
+                        tracing::error!(?e, "Error sending root");
+                    }
                 }
-            }
-        })
-        .await;
+            })
+            .await;
+    };
 
-    drop(tx);
-
+    tokio::select! {
+        _ = scanner_fut => {
+            tracing::error!("Scanner task failed");
+        }
+        _ = join_all(handles) => {
+            tracing::error!("Relayer task failed");
+        }
+    }
     Ok(())
 }
 
