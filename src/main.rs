@@ -18,14 +18,14 @@ use alloy::sol_types::SolEvent;
 use alloy_signer_local::coins_bip39::English;
 use clap::Parser;
 use config::{NetworkType, WalletConfig};
-use eyre::eyre::Result;
-use futures::future::join_all;
+use eyre::eyre::{eyre, Result};
 use futures::StreamExt;
 use relay::signer::{AlloySigner, Signer};
 use relay::{EVMRelay, Relay, Relayer};
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
+use tokio::task::JoinSet;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -121,14 +121,16 @@ pub async fn run(config: Config) -> Result<()> {
 
     let (tx, _) = tokio::sync::broadcast::channel::<U256>(1000);
     let relayers = init_relays(config)?;
-    let mut handles = Vec::new();
+    let mut joinset = JoinSet::new();
     for relay in relayers {
         let tx = tx.clone();
-        handles.push(tokio::spawn(async move {
-            if let Err(e) = relay.subscribe_roots(tx.subscribe()).await {
+        joinset.spawn(async move {
+            relay.subscribe_roots(tx.subscribe()).await.map_err(|e| {
                 tracing::error!(?e, "Error subscribing to roots");
-            }
-        }));
+                eyre!(e)
+            })?;
+            Ok::<(), eyre::Report>(())
+        });
     }
 
     let scanner_fut = async {
@@ -150,7 +152,7 @@ pub async fn run(config: Config) -> Result<()> {
         _ = scanner_fut => {
             tracing::error!("Scanner task failed");
         }
-        _ = join_all(handles) => {
+        _ = joinset.join_all() => {
             tracing::error!("Relayer task failed");
         }
     }
