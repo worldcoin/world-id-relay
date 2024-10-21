@@ -1,3 +1,5 @@
+pub mod signer;
+
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -6,39 +8,42 @@ use alloy::providers::Provider;
 use alloy::transports::Transport;
 use eyre::Result;
 use semaphore::Field;
+use signer::RelaySigner;
 use tokio::sync::mpsc::Receiver;
 
 use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
 
 pub(crate) trait Relay {
-    /// Propogate a new Root to the State Bridge for the given network.
-    async fn propagate_root(&self, root: Field) -> Result<()>;
-
     /// Subscribe to the stream of new Roots on L1.
     async fn subscribe_roots(&'static self, rx: Receiver<Field>) -> Result<()>;
 }
 
 #[derive(Debug, Clone)]
-pub struct OptimismRelayer<T, P>
+pub struct OptimismRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T>,
+    S: RelaySigner,
 {
+    pub signer: S,
     pub state_bridge_address: Address,
     pub op_world_id: Arc<IBridgedWorldIDInstance<T, P>>,
     _pd: PhantomData<T>,
 }
 
-impl<T, P> OptimismRelayer<T, P>
+impl<T, P, S> OptimismRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T>,
+    S: RelaySigner,
 {
     pub async fn new(
+        signer: S,
         state_bridge_address: Address,
         op_world_id: IBridgedWorldIDInstance<T, P>,
     ) -> Self {
         Self {
+            signer,
             state_bridge_address,
             op_world_id: Arc::new(op_world_id),
             _pd: PhantomData,
@@ -46,15 +51,12 @@ where
     }
 }
 
-impl<T, P> Relay for OptimismRelayer<T, P>
+impl<T, P, S> Relay for OptimismRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T> + 'static,
+    S: RelaySigner,
 {
-    async fn propagate_root(&self, _root: Field) -> Result<()> {
-        todo!()
-    }
-
     async fn subscribe_roots(
         &'static self,
         mut rx: Receiver<Field>,
@@ -62,33 +64,38 @@ where
         while let Some(field) = rx.recv().await {
             let latest = self.op_world_id.latestRoot().await?._0;
             if latest != field {
-                self.propagate_root(field).await?;
+                self.signer.propagate_root().await?;
             }
         }
         Ok(())
     }
 }
 
-pub struct BaseRelayer<T, P>
+pub struct BaseRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T>,
+    S: RelaySigner,
 {
+    pub signer: S,
     pub state_bridge_address: Address,
     pub op_world_id: Arc<IBridgedWorldIDInstance<T, P>>,
     _pd: PhantomData<T>,
 }
 
-impl<T, P> BaseRelayer<T, P>
+impl<T, P, S> BaseRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T>,
+    S: RelaySigner,
 {
     pub async fn new(
+        signer: S,
         state_bridge_address: Address,
         op_world_id: IBridgedWorldIDInstance<T, P>,
     ) -> Self {
         Self {
+            signer,
             state_bridge_address,
             op_world_id: Arc::new(op_world_id),
             _pd: PhantomData,
@@ -96,15 +103,12 @@ where
     }
 }
 
-impl<T, P> Relay for BaseRelayer<T, P>
+impl<T, P, S> Relay for BaseRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T> + 'static,
+    S: RelaySigner,
 {
-    async fn propagate_root(&self, _root: Field) -> Result<()> {
-        todo!()
-    }
-
     async fn subscribe_roots(
         &'static self,
         mut rx: Receiver<Field>,
@@ -112,58 +116,7 @@ where
         while let Some(field) = rx.recv().await {
             let latest = self.op_world_id.latestRoot().await?._0;
             if latest != field {
-                self.propagate_root(field).await?;
-            }
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct WorldChainRelayer<T, P>
-where
-    T: Transport + Clone,
-    P: Provider<T>,
-{
-    pub state_bridge_address: Address,
-    pub op_world_id: Arc<IBridgedWorldIDInstance<T, P>>,
-    _pd: PhantomData<T>,
-}
-
-impl<T, P> WorldChainRelayer<T, P>
-where
-    T: Transport + Clone,
-    P: Provider<T>,
-{
-    pub async fn new(
-        state_bridge_address: Address,
-        op_world_id: IBridgedWorldIDInstance<T, P>,
-    ) -> Self {
-        Self {
-            state_bridge_address,
-            op_world_id: Arc::new(op_world_id),
-            _pd: PhantomData,
-        }
-    }
-}
-
-impl<T, P> Relay for WorldChainRelayer<T, P>
-where
-    T: Transport + Clone,
-    P: Provider<T> + 'static,
-{
-    async fn propagate_root(&self, _root: Field) -> Result<()> {
-        todo!()
-    }
-
-    async fn subscribe_roots(
-        &'static self,
-        mut rx: Receiver<Field>,
-    ) -> Result<()> {
-        while let Some(field) = rx.recv().await {
-            let latest = self.op_world_id.latestRoot().await?._0;
-            if latest != field {
-                self.propagate_root(field).await?;
+                self.signer.propagate_root().await?;
             }
         }
         Ok(())
@@ -171,26 +124,31 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct PolygonRelayer<T, P>
+pub struct WorldChainRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T>,
+    S: RelaySigner,
 {
+    pub signer: S,
     pub state_bridge_address: Address,
     pub op_world_id: Arc<IBridgedWorldIDInstance<T, P>>,
     _pd: PhantomData<T>,
 }
 
-impl<T, P> PolygonRelayer<T, P>
+impl<T, P, S> WorldChainRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T>,
+    S: RelaySigner,
 {
     pub async fn new(
+        signer: S,
         state_bridge_address: Address,
         op_world_id: IBridgedWorldIDInstance<T, P>,
     ) -> Self {
         Self {
+            signer,
             state_bridge_address,
             op_world_id: Arc::new(op_world_id),
             _pd: PhantomData,
@@ -198,15 +156,12 @@ where
     }
 }
 
-impl<T, P> Relay for PolygonRelayer<T, P>
+impl<T, P, S> Relay for WorldChainRelayer<T, P, S>
 where
     T: Transport + Clone,
     P: Provider<T> + 'static,
+    S: RelaySigner,
 {
-    async fn propagate_root(&self, _root: Field) -> Result<()> {
-        todo!()
-    }
-
     async fn subscribe_roots(
         &'static self,
         mut rx: Receiver<Field>,
@@ -214,7 +169,60 @@ where
         while let Some(field) = rx.recv().await {
             let latest = self.op_world_id.latestRoot().await?._0;
             if latest != field {
-                self.propagate_root(field).await?;
+                self.signer.propagate_root().await?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PolygonRelayer<T, P, S>
+where
+    T: Transport + Clone,
+    P: Provider<T>,
+    S: RelaySigner,
+{
+    pub signer: S,
+    pub state_bridge_address: Address,
+    pub op_world_id: Arc<IBridgedWorldIDInstance<T, P>>,
+    _pd: PhantomData<T>,
+}
+
+impl<T, P, S> PolygonRelayer<T, P, S>
+where
+    T: Transport + Clone,
+    P: Provider<T>,
+    S: RelaySigner,
+{
+    pub async fn new(
+        signer: S,
+        state_bridge_address: Address,
+        op_world_id: IBridgedWorldIDInstance<T, P>,
+    ) -> Self {
+        Self {
+            signer,
+            state_bridge_address,
+            op_world_id: Arc::new(op_world_id),
+            _pd: PhantomData,
+        }
+    }
+}
+
+impl<T, P, S> Relay for PolygonRelayer<T, P, S>
+where
+    T: Transport + Clone,
+    P: Provider<T> + 'static,
+    S: RelaySigner,
+{
+    async fn subscribe_roots(
+        &'static self,
+        mut rx: Receiver<Field>,
+    ) -> Result<()> {
+        while let Some(field) = rx.recv().await {
+            let latest = self.op_world_id.latestRoot().await?._0;
+            if latest != field {
+                self.signer.propagate_root().await?;
             }
         }
         Ok(())
