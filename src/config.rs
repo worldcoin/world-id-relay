@@ -16,6 +16,9 @@ pub struct Config {
     /// The networks to which roots will be propagated
     #[serde(default)]
     pub bridged_networks: Vec<NetworkConfig>,
+    /// The number of blocks in the past to start scanning for new root events
+    #[serde(default = "default::start_scan")]
+    pub start_scan: u64,
     #[serde(default)]
     pub telemetry: Option<TelemetryConfig>,
 }
@@ -77,7 +80,6 @@ pub enum WalletConfig {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProviderConfig {
     /// Ethereum RPC endpoint
-    #[serde(with = "serde_url")]
     pub rpc_endpoint: Url,
     /// The maximum number of retries for rate limit errors
     #[serde(default = "default::max_rate_limit_retries")]
@@ -105,29 +107,6 @@ impl ProviderConfig {
     }
 }
 
-mod serde_url {
-    use std::borrow::Cow;
-
-    use serde::{Deserialize, Serializer};
-    use url::Url;
-
-    pub fn serialize<S>(url: &Url, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(url.as_ref())
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Url, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s: Cow<'static, str> = Deserialize::deserialize(deserializer)?;
-
-        Url::parse(&s).map_err(serde::de::Error::custom)
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TelemetryConfig {
     // Service name - used for logging, metrics and tracing
@@ -148,6 +127,7 @@ pub struct MetricsConfig {
 }
 
 mod default {
+
     pub const fn window_size() -> u64 {
         1000
     }
@@ -162,5 +142,9 @@ mod default {
 
     pub const fn compute_units_per_second() -> u64 {
         10000
+    }
+
+    pub const fn start_scan() -> u64 {
+        600
     }
 }

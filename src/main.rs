@@ -8,7 +8,7 @@ pub mod utils;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use alloy::providers::Provider as _;
+use alloy::providers::Provider;
 use alloy::rpc::types::Filter;
 use alloy::sol_types::SolEvent;
 use clap::Parser;
@@ -91,10 +91,10 @@ pub async fn run(config: Config) -> Result<()> {
 
     let latest_block_number = provider.get_block_number().await?;
 
-    // Start in the past by approximately 1 hour
-    // TODO: Make this configurable
-    let start_block_number =
-        latest_block_number.checked_sub(600).unwrap_or_default();
+    // Start in the past by approximately 2 hours
+    let start_block_number = latest_block_number
+        .checked_sub(config.start_scan)
+        .unwrap_or_default();
 
     let filter = Filter::new()
         .address(config.canonical_network.address)
