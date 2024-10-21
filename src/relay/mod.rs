@@ -31,7 +31,6 @@ impl Relay for Relayer {
     }
 }
 
-#[derive(Debug, Clone)]
 pub struct EVMRelay {
     pub signer: Signer,
     pub world_id_address: Address,

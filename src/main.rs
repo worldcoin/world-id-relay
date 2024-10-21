@@ -20,7 +20,7 @@ use clap::Parser;
 use config::{NetworkType, WalletConfig};
 use eyre::eyre::{eyre, Result};
 use futures::StreamExt;
-use relay::signer::{AlloySigner, Signer};
+use relay::signer::{AlloySigner, Signer, TxSitterSigner};
 use relay::{EVMRelay, Relay, Relayer};
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
@@ -191,7 +191,23 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                         n.provider.rpc_endpoint.clone(),
                     )));
                 }
-                _ => unimplemented!(),
+                WalletConfig::TxSitter {
+                    url,
+                    address: _,
+                    gas_limit,
+                } => {
+                    let signer = TxSitterSigner::new(
+                        url.as_str(),
+                        n.state_bridge_address,
+                        *gas_limit,
+                    );
+
+                    relayers.push(Relayer::Evm(EVMRelay::new(
+                        Signer::TxSitter(signer),
+                        n.world_id_address,
+                        n.provider.rpc_endpoint.clone(),
+                    )));
+                }
             };
         }
         _ => {}

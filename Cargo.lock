@@ -8873,6 +8873,7 @@ dependencies = [
  "color-eyre",
  "config",
  "dotenv",
+ "ethers-core 2.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures",
  "futures-core",
  "hex",
