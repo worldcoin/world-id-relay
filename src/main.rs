@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use abi::IStateBridge::IStateBridgeInstance;
 use alloy::network::EthereumWallet;
+use alloy::primitives::U256;
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::types::Filter;
 use alloy::signers::local::MnemonicBuilder;
@@ -20,7 +21,7 @@ use config::{NetworkType, WalletConfig};
 use eyre::eyre::Result;
 use futures::StreamExt;
 use relay::signer::{AlloySigner, Signer};
-use relay::{EVMRelay, Relayer};
+use relay::{EVMRelay, Relay, Relayer};
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
@@ -116,12 +117,34 @@ pub async fn run(config: Config) -> Result<()> {
     .await?;
 
     tracing::info!(chain_id, latest_block_number, "Starting ingestion");
+
+    let (tx, _) = tokio::sync::broadcast::channel::<U256>(100);
+    let relayers = init_relays(config)?;
+    let mut handles = Vec::new();
+    for relay in relayers {
+        let tx = tx.clone();
+        handles.push(tokio::spawn(async move {
+            if let Err(e) = relay.subscribe_roots(tx.subscribe()).await {
+                tracing::error!(?e, "Error subscribing to roots");
+            }
+        }));
+    }
+
     scanner
         .root_stream()
-        .for_each(|x| async move {
-            println!("{:#?}", x);
+        .for_each(|x| {
+            let tx = tx.clone();
+            async move {
+                let tx = tx.clone();
+                let field = x.postRoot;
+                if let Err(e) = tx.send(field) {
+                    tracing::error!(?e, "Error sending root");
+                }
+            }
         })
         .await;
+
+    drop(tx);
 
     Ok(())
 }

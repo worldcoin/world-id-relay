@@ -7,7 +7,7 @@ use alloy::providers::ProviderBuilder;
 use eyre::Result;
 use semaphore::Field;
 use signer::{RelaySigner, Signer};
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::broadcast::Receiver;
 use url::Url;
 
 use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
@@ -59,7 +59,7 @@ impl Relay for EVMRelay {
             self.world_id_address,
             l2_provider,
         ));
-        while let Some(field) = rx.recv().await {
+        while let Ok(field) = rx.recv().await {
             let world_id = world_id_instance.clone();
             let latest = world_id.latestRoot().call().await?._0;
             if latest != field {
