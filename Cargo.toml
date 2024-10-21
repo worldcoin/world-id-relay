@@ -16,8 +16,10 @@ alloy = { version = "0.5", features = [
     "transports",
     "hyper",
     "signer-local",
+    "signer-mnemonic",
     "signers",
 ] }
+alloy-signer-local = { version = "0.5" }
 futures = "0.3"
 hex = "0.4"
 hyper = { version = "1", features = ["server", "http1", "http2"] }
