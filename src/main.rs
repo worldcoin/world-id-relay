@@ -118,7 +118,7 @@ pub async fn run(config: Config) -> Result<()> {
 
     tracing::info!(chain_id, latest_block_number, "Starting ingestion");
 
-    let (tx, _) = tokio::sync::broadcast::channel::<U256>(100);
+    let (tx, _) = tokio::sync::broadcast::channel::<U256>(1000);
     let relayers = init_relays(config)?;
     let mut handles = Vec::new();
     for relay in relayers {
