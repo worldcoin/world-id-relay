@@ -29,6 +29,7 @@ pub type AlloySignerProvider = FillProvider<
     Ethereum,
 >;
 pub trait RelaySigner {
+    #[allow(async_fn_in_trait)]
     /// Propogate a new Root to the State Bridge for the given network.
     async fn propagate_root(&self) -> Result<()>;
 }
