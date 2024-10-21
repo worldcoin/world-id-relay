@@ -59,7 +59,8 @@ impl Relay for EVMRelay {
             self.world_id_address,
             l2_provider,
         ));
-        while let Ok(field) = rx.recv().await {
+        loop {
+            let field = rx.recv().await?;
             let world_id = world_id_instance.clone();
             let latest = world_id.latestRoot().call().await?._0;
             if latest != field {
