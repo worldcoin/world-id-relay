@@ -46,6 +46,7 @@ pub type AlloySignerProvider = FillProvider<
     Http<reqwest::Client>,
     Ethereum,
 >;
+
 #[derive(Debug, Clone)]
 pub struct AlloySigner {
     pub(crate) state_bridge_instance:

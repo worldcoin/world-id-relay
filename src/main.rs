@@ -135,7 +135,6 @@ pub async fn run(config: Config) -> Result<()> {
         .for_each(|x| {
             let tx = tx.clone();
             async move {
-                let tx = tx.clone();
                 let field = x.postRoot;
                 if let Err(e) = tx.send(field) {
                     tracing::error!(?e, "Error sending root");
