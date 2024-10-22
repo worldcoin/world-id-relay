@@ -9,7 +9,7 @@ use alloy::transports::http::Http;
 use ethers_core::types::U256;
 use eyre::eyre::{eyre, Result};
 use tracing::{error, info};
-use tx_sitter_client::data::{SendTxRequest, TransactionPriority};
+use tx_sitter_client::data::{SendTxRequest, TransactionPriority, TxStatus};
 use tx_sitter_client::TxSitterClient;
 
 use crate::abi::IStateBridge::IStateBridgeInstance;
@@ -147,8 +147,8 @@ impl RelaySigner for TxSitterSigner {
                 })?;
 
             match tx_response.status {
-                Some(tx_sitter_client::data::TxStatus::Mined)
-                | Some(tx_sitter_client::data::TxStatus::Finalized) => {
+                Some(TxStatus::Mined)
+                | Some(TxStatus::Finalized) => {
                     info!(
                         tx_id = &resp.tx_id,
                         "Root propogation transaction mined"
