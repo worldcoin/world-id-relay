@@ -28,7 +28,8 @@ tx-sitter-client = { git = "https://github.com/worldcoin/signup-sequencer", rev 
 rand = { version = "0.8.5", features = ["small_rng"] }
 rayon = "1.10.0"
 ruint = "1.11.0"
-serde = { version = "1.0.189", features = ["derive"] }
+# 1.0.211 fails to compile. See https://github.com/serde-rs/serde/issues/2844
+serde = { version = "=1.0.210", features = ["derive"] }
 serde_json = "1.0"
 serde_path_to_error = "0.1.16"
 telemetry-batteries = { git = "https://github.com/worldcoin/telemetry-batteries.git", rev = "7af994c" }
