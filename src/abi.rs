@@ -12,16 +12,16 @@ sol! {
     }
 
     #[sol(rpc)]
-    interface IStateBridge {
-        function propogateRoot() external;
-    }
-
-    #[sol(rpc)]
     interface IBridgedWorldID {
         #[derive(Serialize, Deserialize)]
         event RootAdded(uint256 root, uint128 timestamp);
         function latestRoot() public view virtual returns (uint256);
         function receiveRoot(uint256 newRoot) external;
+    }
+
+    #[sol(rpc)]
+    interface IStateBridge {
+        function propogateRoot() external;
     }
 
     #[sol(rpc)]
