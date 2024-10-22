@@ -81,14 +81,8 @@ pub enum NetworkType {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum WalletConfig {
-    Mnemonic {
-        mnemonic: String,
-    },
-    TxSitter {
-        url: String,
-        // address: Address,
-        gas_limit: Option<u64>,
-    },
+    Mnemonic { mnemonic: String },
+    TxSitter { url: String, gas_limit: Option<u64> },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
