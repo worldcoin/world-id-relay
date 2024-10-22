@@ -210,7 +210,8 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                 }
             };
         }
-        _ => {}
+        NetworkType::Svm => unimplemented!(),
+        NetworkType::Scroll => unimplemented!(),
     });
 
     Ok(relayers)
