@@ -147,8 +147,7 @@ impl RelaySigner for TxSitterSigner {
                 })?;
 
             match tx_response.status {
-                Some(TxStatus::Mined)
-                | Some(TxStatus::Finalized) => {
+                Some(TxStatus::Mined) | Some(TxStatus::Finalized) => {
                     info!(
                         tx_id = &resp.tx_id,
                         "Root propogation transaction mined"
