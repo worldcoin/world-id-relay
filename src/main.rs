@@ -186,7 +186,7 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                     let signer = AlloySigner::new(state_bridge);
 
                     relayers.push(Relayer::Evm(EVMRelay::new(
-                        Signer::Alloy(signer),
+                        Signer::AlloySigner(signer),
                         n.world_id_address,
                         n.provider.rpc_endpoint.clone(),
                     )));
@@ -203,7 +203,7 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                     );
 
                     relayers.push(Relayer::Evm(EVMRelay::new(
-                        Signer::TxSitter(signer),
+                        Signer::TxSitterSigner(signer),
                         n.world_id_address,
                         n.provider.rpc_endpoint.clone(),
                     )));
