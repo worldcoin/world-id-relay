@@ -22,16 +22,17 @@ pub(crate) trait RelaySigner {
     async fn propagate_root(&self) -> Result<()>;
 }
 
-pub enum Signer {
-    Alloy(AlloySigner),
-    TxSitter(TxSitterSigner),
-}
-
-impl RelaySigner for Signer {
-    async fn propagate_root(&self) -> Result<()> {
-        match self {
-            Signer::Alloy(signer) => signer.propagate_root().await,
-            Signer::TxSitter(signer) => signer.propagate_root().await,
+macro_rules! signer {
+    ($($signer_type:ident),+ $(,)?) => {
+        pub enum Signer {
+            $($signer_type($signer_type),)+
+        }
+        impl RelaySigner for Signer {
+            async fn propagate_root(&self) -> Result<()> {
+                match self {
+                    $(Signer::$signer_type(signer) => signer.propagate_root().await,)+
+                }
+            }
         }
     }
 }
@@ -172,3 +173,5 @@ impl RelaySigner for TxSitterSigner {
         Ok(())
     }
 }
+
+signer!(AlloySigner, TxSitterSigner);
