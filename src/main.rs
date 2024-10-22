@@ -10,20 +10,22 @@ use std::sync::Arc;
 
 use abi::IStateBridge::IStateBridgeInstance;
 use alloy::network::EthereumWallet;
-use alloy::providers::{Provider as _, ProviderBuilder};
+use alloy::primitives::U256;
+use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::types::Filter;
 use alloy::signers::local::MnemonicBuilder;
 use alloy::sol_types::SolEvent;
 use alloy_signer_local::coins_bip39::English;
 use clap::Parser;
 use config::{NetworkType, WalletConfig};
-use eyre::eyre::Result;
+use eyre::eyre::{eyre, Result};
 use futures::StreamExt;
-use relay::signer::{AlloySigner, Signer};
-use relay::{EVMRelay, Relayer};
+use relay::signer::{AlloySigner, Signer, TxSitterSigner};
+use relay::{EVMRelay, Relay, Relayer};
 use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
+use tokio::task::JoinSet;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -116,13 +118,44 @@ pub async fn run(config: Config) -> Result<()> {
     .await?;
 
     tracing::info!(chain_id, latest_block_number, "Starting ingestion");
-    scanner
-        .root_stream()
-        .for_each(|x| async move {
-            println!("{:#?}", x);
-        })
-        .await;
 
+    let (tx, _) = tokio::sync::broadcast::channel::<U256>(1000);
+    let relayers = init_relays(config)?;
+    let mut joinset = JoinSet::new();
+    for relay in relayers {
+        let tx = tx.clone();
+        joinset.spawn(async move {
+            relay.subscribe_roots(tx.subscribe()).await.map_err(|e| {
+                tracing::error!(?e, "Error subscribing to roots");
+                eyre!(e)
+            })?;
+            Ok::<(), eyre::Report>(())
+        });
+    }
+
+    let scanner_fut = async {
+        scanner
+            .root_stream()
+            .for_each(|event| {
+                let tx = tx.clone();
+                async move {
+                    let field = event.postRoot;
+                    if let Err(e) = tx.send(field) {
+                        tracing::error!(?e, "Error sending root");
+                    }
+                }
+            })
+            .await;
+    };
+
+    tokio::select! {
+        _ = scanner_fut => {
+            tracing::error!("Scanner task failed");
+        }
+        _ = joinset.join_all() => {
+            tracing::error!("Relayer task failed");
+        }
+    }
     Ok(())
 }
 
@@ -158,7 +191,23 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                         n.provider.rpc_endpoint.clone(),
                     )));
                 }
-                _ => unimplemented!(),
+                WalletConfig::TxSitter {
+                    url,
+                    address: _,
+                    gas_limit,
+                } => {
+                    let signer = TxSitterSigner::new(
+                        url.as_str(),
+                        n.state_bridge_address,
+                        *gas_limit,
+                    );
+
+                    relayers.push(Relayer::Evm(EVMRelay::new(
+                        Signer::TxSitter(signer),
+                        n.world_id_address,
+                        n.provider.rpc_endpoint.clone(),
+                    )));
+                }
             };
         }
         _ => {}
