@@ -74,7 +74,7 @@ impl AlloySigner {
 impl RelaySigner for AlloySigner {
     async fn propagate_root(&self) -> Result<()> {
         let transport =
-            self.state_bridge_instance.propogateRoot().send().await?;
+            self.state_bridge_instance.propagateRoot().send().await?;
 
         match transport.get_receipt().await {
             Ok(receipt) => {

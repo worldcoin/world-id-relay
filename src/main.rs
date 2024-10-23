@@ -125,9 +125,25 @@ pub async fn run(config: Config) -> Result<()> {
     for relay in relayers {
         let tx = tx.clone();
         joinset.spawn(async move {
-            relay.subscribe_roots(tx.subscribe()).await.map_err(|e| {
-                tracing::error!(?e, "Error subscribing to roots");
-                eyre!(e)
+            relay.subscribe_roots(tx.subscribe()).await.map_err(|error| {
+                match relay {
+                    Relayer::Evm(EVMRelay {
+                        signer: _,
+                        world_id_address,
+                        provider,
+                    }) => {
+                        tracing::error!(
+                            %error,
+                            %provider,
+                            %world_id_address,
+                            "Error subscribing to roots"
+                        );
+                    }
+                    Relayer::Svm(_) => {
+                        tracing::error!(%error, "Error subscribing to roots");
+                    }
+                }
+                eyre!(error)
             })?;
             Ok::<(), eyre::Report>(())
         });

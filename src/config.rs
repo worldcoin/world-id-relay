@@ -1,3 +1,4 @@
+use core::fmt;
 use std::path::Path;
 
 use alloy::primitives::Address;
@@ -45,7 +46,7 @@ impl Config {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct BridgedNetworkConfig {
     /// The wallet configuration for the network
     /// overrides the global wallet configuration
@@ -56,6 +57,18 @@ pub struct BridgedNetworkConfig {
     pub ty: NetworkType,
     pub name: String,
     pub provider: ProviderConfig,
+}
+
+impl fmt::Debug for BridgedNetworkConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BridgedNetworkConfig")
+            .field("state_bridge_addr", &self.state_bridge_addr)
+            .field("world_id_addr", &self.world_id_addr)
+            .field("ty", &self.ty)
+            .field("name", &self.name)
+            .field("provider", &self.provider)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
