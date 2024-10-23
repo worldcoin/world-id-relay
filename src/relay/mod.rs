@@ -13,7 +13,7 @@ use url::Url;
 use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
 
 // Two Mainnet Blocks
-pub const ROOT_PROPOGATION_BACKOFF: u64 = 24;
+pub const ROOT_PROPAGATION_BACKOFF: u64 = 24;
 
 pub(crate) trait Relay {
     /// Subscribe to the stream of new Roots on L1.
@@ -72,7 +72,7 @@ impl Relay for EVMRelay {
                 self.signer.propagate_root().await?;
                 // We sleep for 2 blocks, so we don't resend the same root prior to derivation of the message on L2.
                 std::thread::sleep(std::time::Duration::from_secs(
-                    ROOT_PROPOGATION_BACKOFF,
+                    ROOT_PROPAGATION_BACKOFF,
                 ));
             }
         }
