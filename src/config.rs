@@ -1,3 +1,4 @@
+use core::fmt;
 use std::path::Path;
 
 use alloy::primitives::Address;
@@ -46,7 +47,7 @@ impl Config {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct NetworkConfig {
     #[serde(rename = "type")]
     pub ty: NetworkType,
@@ -58,6 +59,19 @@ pub struct NetworkConfig {
     pub world_id_address: Address,
     pub provider: ProviderConfig,
     pub wallet: WalletConfig,
+}
+
+impl fmt::Debug for NetworkConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NetworkConfig")
+            .field("ty", &self.ty)
+            .field("name", &self.name)
+            .field("address", &self.address)
+            .field("state_bridge_address", &self.state_bridge_address)
+            .field("world_id_address", &self.world_id_address)
+            .field("provider", &self.provider)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

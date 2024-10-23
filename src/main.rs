@@ -26,6 +26,7 @@ use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
 use tokio::task::JoinSet;
+use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -126,7 +127,14 @@ pub async fn run(config: Config) -> Result<()> {
         let tx = tx.clone();
         joinset.spawn(async move {
             relay.subscribe_roots(tx.subscribe()).await.map_err(|e| {
-                tracing::error!(?e, "Error subscribing to roots");
+                match relay {
+                    Relayer::Evm(EVMRelay { signer: _signer, world_id_address, provider }) => {
+                        tracing::error!(?e, provider=?provider, world_id_address=?world_id_address, "Error subscribing to roots");
+                    }
+                    Relayer::Svm(_) => {
+                        tracing::error!(?e, "Error subscribing to roots");
+                    }
+                }
                 eyre!(e)
             })?;
             Ok::<(), eyre::Report>(())
@@ -171,7 +179,12 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                         .unwrap()
                         .build()
                         .expect("Failed to build wallet");
+                    info!("Signer wallet {:?}", signer.address());
                     let wallet = EthereumWallet::new(signer);
+                    info!(
+                        "RPC Endpoint: {:?}",
+                        cfg.canonical_network.provider.rpc_endpoint
+                    );
                     let l1_provider = ProviderBuilder::default()
                         .with_recommended_fillers()
                         .wallet(wallet)

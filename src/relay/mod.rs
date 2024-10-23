@@ -12,6 +12,9 @@ use url::Url;
 
 use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
 
+// Two Mainnet Blocks
+pub const ROOT_PROPOGATION_BACKOFF: u64 = 24;
+
 pub(crate) trait Relay {
     /// Subscribe to the stream of new Roots on L1.
     async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()>;
@@ -63,8 +66,14 @@ impl Relay for EVMRelay {
             let field = rx.recv().await?;
             let world_id = world_id_instance.clone();
             let latest = world_id.latestRoot().call().await?._0;
+
             if latest != field {
+                tracing::trace!(new_root = ?field, latest_root =?latest, "Propagating root");
                 self.signer.propagate_root().await?;
+                // We sleep for 2 blocks, so we don't resend the same root prior to derivation of the message on L2.
+                std::thread::sleep(std::time::Duration::from_secs(
+                    ROOT_PROPOGATION_BACKOFF,
+                ));
             }
         }
     }

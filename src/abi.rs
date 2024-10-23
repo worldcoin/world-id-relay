@@ -13,7 +13,7 @@ sol! {
 
     #[sol(rpc)]
     interface IStateBridge {
-        function propogateRoot() external;
+        function propagateRoot() external;
     }
 
     #[sol(rpc)]
