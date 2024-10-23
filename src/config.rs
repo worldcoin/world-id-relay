@@ -12,14 +12,13 @@ use url::Url;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    /// The global wallet configuration
+    pub wallet: Option<WalletConfig>,
     /// The network from which roots will be propagated
-    pub canonical_network: NetworkConfig,
+    pub canonical_network: CanonicalNetworkConfig,
     /// The networks to which roots will be propagated
     #[serde(default)]
-    pub bridged_networks: Vec<NetworkConfig>,
-    /// The number of blocks in the past to start scanning for new root events
-    #[serde(default = "default::start_scan")]
-    pub start_scan: u64,
+    pub bridged_networks: Vec<BridgedNetworkConfig>,
     #[serde(default)]
     pub telemetry: Option<TelemetryConfig>,
 }
@@ -48,30 +47,40 @@ impl Config {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct NetworkConfig {
+pub struct BridgedNetworkConfig {
+    /// The wallet configuration for the network
+    /// overrides the global wallet configuration
+    pub wallet: Option<WalletConfig>,
+    pub state_bridge_addr: Address,
+    pub world_id_addr: Address,
     #[serde(rename = "type")]
     pub ty: NetworkType,
     pub name: String,
-    pub address: Address,
-    #[serde(default)]
-    pub state_bridge_address: Address,
-    #[serde(default)]
-    pub world_id_address: Address,
     pub provider: ProviderConfig,
-    pub wallet: WalletConfig,
 }
 
-impl fmt::Debug for NetworkConfig {
+impl fmt::Debug for BridgedNetworkConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("NetworkConfig")
+        f.debug_struct("BridgedNetworkConfig")
+            .field("state_bridge_addr", &self.state_bridge_addr)
+            .field("world_id_addr", &self.world_id_addr)
             .field("ty", &self.ty)
             .field("name", &self.name)
-            .field("address", &self.address)
-            .field("state_bridge_address", &self.state_bridge_address)
-            .field("world_id_address", &self.world_id_address)
             .field("provider", &self.provider)
             .finish()
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CanonicalNetworkConfig {
+    pub world_id_addr: Address,
+    /// The number of blocks in the past to start scanning for new root events
+    #[serde(default = "default::start_scan")]
+    pub start_scan: u64,
+    #[serde(rename = "type")]
+    pub ty: NetworkType,
+    pub name: String,
+    pub provider: ProviderConfig,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -85,14 +94,8 @@ pub enum NetworkType {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum WalletConfig {
-    Mnemonic {
-        mnemonic: String,
-    },
-    TxSitter {
-        url: String,
-        address: Address,
-        gas_limit: Option<u64>,
-    },
+    Mnemonic { mnemonic: String },
+    TxSitter { url: String, gas_limit: Option<u64> },
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

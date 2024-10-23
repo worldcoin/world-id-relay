@@ -111,6 +111,9 @@ impl TxSitterSigner {
 }
 
 impl RelaySigner for TxSitterSigner {
+    /// Propogate a new Root to the given network.
+    ///
+    /// This is a long running operation and should probably be awaited in a background task.
     async fn propagate_root(&self) -> Result<()> {
         let ethers_selector = ethers_core::types::Bytes::from_static(
             PROPOGATE_ROOT_SELECTOR.as_ref(),
