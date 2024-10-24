@@ -1,14 +1,17 @@
 use core::fmt;
 use std::path::Path;
 
+use alloy::network::EthereumWallet;
 use alloy::primitives::Address;
-use alloy::providers::{ProviderBuilder, RootProvider};
+use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::client::ClientBuilder;
 use alloy::transports::http::Http;
 use alloy::transports::layers::{RetryBackoffLayer, RetryBackoffService};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;
+
+pub type ThrottledTransport = RetryBackoffService<Http<Client>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -116,7 +119,7 @@ pub struct ProviderConfig {
 }
 
 impl ProviderConfig {
-    pub fn provider(&self) -> RootProvider<RetryBackoffService<Http<Client>>> {
+    pub fn provider(&self) -> impl Provider<ThrottledTransport> {
         let client = ClientBuilder::default()
             .layer(RetryBackoffLayer::new(
                 self.max_rate_limit_retries,
@@ -125,6 +128,23 @@ impl ProviderConfig {
             ))
             .http(self.rpc_endpoint.clone());
         ProviderBuilder::new().on_client(client)
+    }
+
+    pub fn signer(
+        &self,
+        wallet: EthereumWallet,
+    ) -> impl Provider<ThrottledTransport> {
+        let client = ClientBuilder::default()
+            .layer(RetryBackoffLayer::new(
+                self.max_rate_limit_retries,
+                self.initial_backoff,
+                self.compute_units_per_second,
+            ))
+            .http(self.rpc_endpoint.clone());
+        ProviderBuilder::default()
+            .with_recommended_fillers()
+            .wallet(wallet)
+            .on_client(client)
     }
 }
 
@@ -154,7 +174,7 @@ mod default {
     }
 
     pub const fn max_rate_limit_retries() -> u32 {
-        1
+        10
     }
 
     pub const fn initial_backoff() -> u64 {

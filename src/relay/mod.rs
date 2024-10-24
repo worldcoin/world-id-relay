@@ -20,16 +20,17 @@ pub(crate) trait Relay {
     async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()>;
 }
 
-pub enum Relayer {
-    Evm(EVMRelay),
-    Svm(SvmRelay),
-}
-
-impl Relay for Relayer {
-    async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()> {
-        match self {
-            Relayer::Evm(relay) => relay.subscribe_roots(rx).await,
-            Relayer::Svm(_relay) => unimplemented!(),
+macro_rules! relay {
+    ($($relay_type:ident),+ $(,)?) => {
+        pub enum Relayer {
+            $($relay_type($relay_type),)+
+        }
+        impl Relay for Relayer {
+            async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()> {
+                match self {
+                    $(Relayer::$relay_type(relay) => Ok(relay.subscribe_roots(rx).await?),)+
+                }
+            }
         }
     }
 }
@@ -80,3 +81,11 @@ impl Relay for EVMRelay {
 }
 
 pub struct SvmRelay;
+
+impl Relay for SvmRelay {
+    async fn subscribe_roots(&self, _rx: Receiver<Field>) -> Result<()> {
+        unimplemented!()
+    }
+}
+
+relay!(EVMRelay, SvmRelay);
