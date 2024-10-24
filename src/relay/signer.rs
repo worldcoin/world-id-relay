@@ -39,20 +39,16 @@ macro_rules! signer {
     }
 }
 
-pub type AlloySignerProvider = FillProvider<
+pub type TxFillers = JoinFill<
+    GasFiller,
     JoinFill<
-        JoinFill<
-            JoinFill<
-                JoinFill<
-                    JoinFill<Identity, ChainIdFiller>,
-                    NonceFiller<CachedNonceManager>,
-                >,
-                BlobGasFiller,
-            >,
-            GasFiller,
-        >,
-        WalletFiller<EthereumWallet>,
+        BlobGasFiller,
+        JoinFill<NonceFiller<CachedNonceManager>, ChainIdFiller>,
     >,
+>;
+
+pub type AlloySignerProvider = FillProvider<
+    JoinFill<JoinFill<Identity, TxFillers>, WalletFiller<EthereumWallet>>,
     RootProvider<ThrottledTransport>,
     ThrottledTransport,
     Ethereum,

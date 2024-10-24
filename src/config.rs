@@ -4,7 +4,8 @@ use std::path::Path;
 use alloy::network::EthereumWallet;
 use alloy::primitives::Address;
 use alloy::providers::fillers::{
-    BlobGasFiller, CachedNonceManager, ChainIdFiller, GasFiller, NonceFiller,
+    BlobGasFiller, CachedNonceManager, ChainIdFiller, GasFiller, JoinFill,
+    NonceFiller,
 };
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::client::ClientBuilder;
@@ -14,7 +15,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::relay::signer::AlloySignerProvider;
+use crate::relay::signer::{AlloySignerProvider, TxFillers};
 
 pub type ThrottledTransport = RetryBackoffService<Http<Client>>;
 
@@ -143,13 +144,24 @@ impl ProviderConfig {
                 self.compute_units_per_second,
             ))
             .http(self.rpc_endpoint.clone());
+
         ProviderBuilder::new()
-            .filler(ChainIdFiller::default())
-            .filler(NonceFiller::new(CachedNonceManager::default()))
-            .filler(BlobGasFiller)
-            .filler(GasFiller)
+            .filler(Self::tx_fillers())
             .wallet(wallet)
             .on_client(client)
+    }
+
+    fn tx_fillers() -> TxFillers {
+        JoinFill::new(
+            GasFiller,
+            JoinFill::new(
+                BlobGasFiller,
+                JoinFill::new(
+                    NonceFiller::new(CachedNonceManager::default()),
+                    ChainIdFiller::default(),
+                ),
+            ),
+        )
     }
 }
 
