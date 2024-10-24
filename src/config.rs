@@ -147,7 +147,7 @@ impl ProviderConfig {
             .filler(ChainIdFiller::default())
             .filler(NonceFiller::new(CachedNonceManager::default()))
             .filler(BlobGasFiller)
-            .filler(GasFiller::default())
+            .filler(GasFiller)
             .wallet(wallet)
             .on_client(client)
     }
