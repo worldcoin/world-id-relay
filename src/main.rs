@@ -105,9 +105,9 @@ pub async fn run(config: Config) -> Result<()> {
     let latest_block_number = provider.get_block_number().await?;
 
     // // Start in the past by approximately 2 hours
-    // let start_block_number = latest_block_number
-    //     .checked_sub(config.canonical_network.start_scan)
-    //     .unwrap_or_default();
+    let start_block_number = latest_block_number
+        .checked_sub(config.canonical_network.start_scan)
+        .unwrap_or_default();
 
     let filter = Filter::new()
         .address(config.canonical_network.world_id_addr)
@@ -116,7 +116,7 @@ pub async fn run(config: Config) -> Result<()> {
     let scanner = BlockScanner::new(
         provider.clone(),
         config.canonical_network.provider.window_size,
-        latest_block_number,
+        start_block_number,
         filter,
     )
     .await?;
