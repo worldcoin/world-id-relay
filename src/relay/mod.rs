@@ -20,16 +20,17 @@ pub(crate) trait Relay {
     async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()>;
 }
 
-pub enum Relayer {
-    Evm(EVMRelay),
-    Svm(SvmRelay),
-}
-
-impl Relay for Relayer {
-    async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()> {
-        match self {
-            Relayer::Evm(relay) => relay.subscribe_roots(rx).await,
-            Relayer::Svm(_relay) => unimplemented!(),
+macro_rules! relay {
+    ($($relay_type:ident),+ $(,)?) => {
+        pub enum Relayer {
+            $($relay_type($relay_type),)+
+        }
+        impl Relay for Relayer {
+            async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()> {
+                match self {
+                    $(Relayer::$relay_type(relay) => Ok(relay.subscribe_roots(rx).await?),)+
+                }
+            }
         }
     }
 }
@@ -68,8 +69,14 @@ impl Relay for EVMRelay {
             let latest = world_id.latestRoot().call().await?._0;
 
             if latest != field {
-                tracing::trace!(new_root = ?field, latest_root =?latest, "Propagating root");
-                self.signer.propagate_root().await?;
+                match self.signer.propagate_root().await {
+                    Ok(_) => {
+                        tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");
+                    }
+                    Err(e) => {
+                        tracing::error!(error = %e, root = %field, previous_root=%latest, provider = %self.provider, "Failed to propagate root");
+                    }
+                }
                 // We sleep for 2 blocks, so we don't resend the same root prior to derivation of the message on L2.
                 std::thread::sleep(std::time::Duration::from_secs(
                     ROOT_PROPAGATION_BACKOFF,
@@ -80,3 +87,11 @@ impl Relay for EVMRelay {
 }
 
 pub struct SvmRelay;
+
+impl Relay for SvmRelay {
+    async fn subscribe_roots(&self, _rx: Receiver<Field>) -> Result<()> {
+        unimplemented!()
+    }
+}
+
+relay!(EVMRelay, SvmRelay);

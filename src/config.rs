@@ -1,8 +1,13 @@
 use core::fmt;
 use std::path::Path;
 
+use alloy::network::EthereumWallet;
 use alloy::primitives::Address;
-use alloy::providers::{ProviderBuilder, RootProvider};
+use alloy::providers::fillers::{
+    BlobGasFiller, CachedNonceManager, ChainIdFiller, GasFiller, JoinFill,
+    NonceFiller,
+};
+use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::client::ClientBuilder;
 use alloy::transports::http::Http;
 use alloy::transports::layers::{RetryBackoffLayer, RetryBackoffService};
@@ -10,10 +15,12 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::relay::signer::{AlloySignerProvider, TxFillers};
+
+pub type ThrottledTransport = RetryBackoffService<Http<Client>>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// The global wallet configuration
-    pub wallet: Option<WalletConfig>,
     /// The network from which roots will be propagated
     pub canonical_network: CanonicalNetworkConfig,
     /// The networks to which roots will be propagated
@@ -74,6 +81,8 @@ impl fmt::Debug for BridgedNetworkConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CanonicalNetworkConfig {
     pub world_id_addr: Address,
+    /// The global wallet configuration
+    pub wallet: Option<WalletConfig>,
     /// The number of blocks in the past to start scanning for new root events
     #[serde(default = "default::start_scan")]
     pub start_scan: u64,
@@ -116,7 +125,7 @@ pub struct ProviderConfig {
 }
 
 impl ProviderConfig {
-    pub fn provider(&self) -> RootProvider<RetryBackoffService<Http<Client>>> {
+    pub fn provider(&self) -> impl Provider<ThrottledTransport> {
         let client = ClientBuilder::default()
             .layer(RetryBackoffLayer::new(
                 self.max_rate_limit_retries,
@@ -125,6 +134,34 @@ impl ProviderConfig {
             ))
             .http(self.rpc_endpoint.clone());
         ProviderBuilder::new().on_client(client)
+    }
+
+    pub fn signer(&self, wallet: EthereumWallet) -> AlloySignerProvider {
+        let client = ClientBuilder::default()
+            .layer(RetryBackoffLayer::new(
+                self.max_rate_limit_retries,
+                self.initial_backoff,
+                self.compute_units_per_second,
+            ))
+            .http(self.rpc_endpoint.clone());
+
+        ProviderBuilder::new()
+            .filler(Self::tx_fillers())
+            .wallet(wallet)
+            .on_client(client)
+    }
+
+    fn tx_fillers() -> TxFillers {
+        JoinFill::new(
+            GasFiller,
+            JoinFill::new(
+                BlobGasFiller,
+                JoinFill::new(
+                    NonceFiller::new(CachedNonceManager::default()),
+                    ChainIdFiller::default(),
+                ),
+            ),
+        )
     }
 }
 
@@ -154,7 +191,7 @@ mod default {
     }
 
     pub const fn max_rate_limit_retries() -> u32 {
-        1
+        10
     }
 
     pub const fn initial_backoff() -> u64 {

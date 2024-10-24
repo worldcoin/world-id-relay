@@ -8,17 +8,16 @@ pub mod utils;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use abi::IStateBridge::IStateBridgeInstance;
 use alloy::network::EthereumWallet;
 use alloy::primitives::U256;
-use alloy::providers::{Provider, ProviderBuilder};
+use alloy::providers::Provider;
 use alloy::rpc::types::Filter;
 use alloy::signers::local::MnemonicBuilder;
 use alloy::sol_types::SolEvent;
 use alloy_signer_local::coins_bip39::English;
 use clap::Parser;
 use config::{NetworkType, WalletConfig};
-use eyre::eyre::{eyre, OptionExt, Result};
+use eyre::eyre::{eyre, Result};
 use futures::StreamExt;
 use relay::signer::{AlloySigner, Signer, TxSitterSigner};
 use relay::{EVMRelay, Relay, Relayer};
@@ -26,6 +25,7 @@ use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
 use tokio::task::JoinSet;
+use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -52,6 +52,10 @@ pub async fn main() -> Result<()> {
     eyre::install()?;
     dotenv::dotenv().ok();
 
+    // Set default log level if not set
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
     let opts = Opts::parse();
 
     let config = Config::load(opts.config.as_deref())?;
@@ -100,7 +104,7 @@ pub async fn run(config: Config) -> Result<()> {
 
     let latest_block_number = provider.get_block_number().await?;
 
-    // Start in the past by approximately 2 hours
+    // // Start in the past by approximately 2 hours
     let start_block_number = latest_block_number
         .checked_sub(config.canonical_network.start_scan)
         .unwrap_or_default();
@@ -127,7 +131,7 @@ pub async fn run(config: Config) -> Result<()> {
         joinset.spawn(async move {
             relay.subscribe_roots(tx.subscribe()).await.map_err(|error| {
                 match relay {
-                    Relayer::Evm(EVMRelay {
+                    Relayer::EVMRelay(EVMRelay {
                         signer: _,
                         world_id_address,
                         provider,
@@ -139,7 +143,7 @@ pub async fn run(config: Config) -> Result<()> {
                             "Error subscribing to roots"
                         );
                     }
-                    Relayer::Svm(_) => {
+                    Relayer::SvmRelay(_) => {
                         tracing::error!(%error, "Error subscribing to roots");
                     }
                 }
@@ -175,60 +179,87 @@ pub async fn run(config: Config) -> Result<()> {
     Ok(())
 }
 
+/// Initializes the relayers for the bridged networks.
+///
+/// Additionally initializes the signers from the global wallet configuration if present,
+/// otherwise from the bridged network configuration.
 fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
+    // Optinally use a global wallet configuration for all networks without a specific wallet configuration.
+    let global_signer = if let Some(wallet) = cfg.canonical_network.wallet {
+        match wallet {
+            WalletConfig::Mnemonic { mnemonic } => {
+                let signer = MnemonicBuilder::<English>::default()
+                    .phrase(mnemonic)
+                    .index(0)?
+                    .build()?;
+                let wallet = EthereumWallet::new(signer);
+
+                let provider =
+                    cfg.canonical_network.provider.signer(wallet.clone());
+
+                Some(Arc::new(provider))
+            }
+            _ => None,
+        }
+    } else {
+        None
+    };
     cfg.bridged_networks
         .iter()
         .map(|bridged| {
-            let wallet_config = bridged
-                .wallet
-                .as_ref()
-                .or(cfg.wallet.as_ref())
-                .ok_or_eyre("No wallet configuration found")?;
-
+            let wallet_config = bridged.wallet.as_ref();
             match bridged.ty {
                 NetworkType::Evm => match wallet_config {
-                    WalletConfig::Mnemonic { mnemonic } => {
+                    Some(WalletConfig::Mnemonic { mnemonic }) => {
                         let signer = MnemonicBuilder::<English>::default()
                             .phrase(mnemonic)
-                            .index(0)
-                            .unwrap()
-                            .build()
-                            .expect("Failed to build wallet");
+                            .index(0)?
+                            .build()?;
                         let wallet = EthereumWallet::new(signer);
-                        let l1_provider = ProviderBuilder::default()
-                            .with_recommended_fillers()
-                            .wallet(wallet)
-                            .on_http(
-                                cfg.canonical_network
-                                    .provider
-                                    .rpc_endpoint
-                                    .clone(),
-                            );
-                        let state_bridge = IStateBridgeInstance::new(
+                        let provider = cfg
+                            .canonical_network
+                            .provider
+                            .signer(wallet.clone());
+                        let alloy_signer = AlloySigner::new(
                             bridged.state_bridge_addr,
-                            l1_provider,
+                            Arc::new(provider),
                         );
 
-                        let signer = AlloySigner::new(state_bridge);
-
-                        Ok(Relayer::Evm(EVMRelay::new(
-                            Signer::AlloySigner(signer),
+                        Ok(Relayer::EVMRelay(EVMRelay::new(
+                            Signer::AlloySigner(alloy_signer),
                             bridged.world_id_addr,
                             bridged.provider.rpc_endpoint.clone(),
                         )))
                     }
-                    WalletConfig::TxSitter { url, gas_limit } => {
+                    Some(WalletConfig::TxSitter { url, gas_limit }) => {
                         let signer = TxSitterSigner::new(
                             url.as_str(),
                             bridged.state_bridge_addr,
                             *gas_limit,
                         );
 
-                        Ok(Relayer::Evm(EVMRelay::new(
+                        Ok(Relayer::EVMRelay(EVMRelay::new(
                             Signer::TxSitterSigner(signer),
                             bridged.world_id_addr,
                             bridged.provider.rpc_endpoint.clone(),
                         )))
+                    }
+                    None => {
+                        if let Some(global_signer) = &global_signer {
+                            info!(network = %bridged.name, "Using global wallet configuration for bridged network");
+                            let alloy_signer = AlloySigner::new(
+                                bridged.state_bridge_addr,
+                                global_signer.clone(),
+                            );
+
+                            Ok(Relayer::EVMRelay(EVMRelay::new(
+                                Signer::AlloySigner(alloy_signer),
+                                bridged.world_id_addr,
+                                bridged.provider.rpc_endpoint.clone(),
+                            )))
+                        } else {
+                            Err(eyre!("No wallet configuration found"))
+                        }
                     }
                 },
                 NetworkType::Svm => unimplemented!(),

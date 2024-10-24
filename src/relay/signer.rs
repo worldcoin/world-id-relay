@@ -1,21 +1,23 @@
+use std::sync::Arc;
+
 use alloy::network::{Ethereum, EthereumWallet};
 use alloy::primitives::{bytes, Address, Bytes};
 use alloy::providers::fillers::{
-    BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill,
-    NonceFiller, WalletFiller,
+    BlobGasFiller, CachedNonceManager, ChainIdFiller, FillProvider, GasFiller,
+    JoinFill, NonceFiller, WalletFiller,
 };
 use alloy::providers::{Identity, RootProvider};
-use alloy::transports::http::Http;
 use ethers_core::types::U256;
 use eyre::eyre::{eyre, Result};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use tx_sitter_client::data::{SendTxRequest, TransactionPriority, TxStatus};
 use tx_sitter_client::TxSitterClient;
 
 use crate::abi::IStateBridge::IStateBridgeInstance;
+use crate::config::ThrottledTransport;
 
-/// "propogateRoot()" Selector
-pub static PROPOGATE_ROOT_SELECTOR: Bytes = bytes!("21823a11");
+/// keccak256("propagateRoot()")[..4]
+pub static PROPAGATE_ROOT_SELECTOR: Bytes = bytes!("380db829");
 
 pub(crate) trait RelaySigner {
     /// Propogate a new Root to the State Bridge for the given network.
@@ -37,48 +39,50 @@ macro_rules! signer {
     }
 }
 
-pub type AlloySignerProvider = FillProvider<
+pub type TxFillers = JoinFill<
+    GasFiller,
     JoinFill<
-        JoinFill<
-            Identity,
-            JoinFill<
-                GasFiller,
-                JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>,
-            >,
-        >,
-        WalletFiller<EthereumWallet>,
+        BlobGasFiller,
+        JoinFill<NonceFiller<CachedNonceManager>, ChainIdFiller>,
     >,
-    RootProvider<Http<reqwest::Client>>,
-    Http<reqwest::Client>,
+>;
+
+pub type AlloySignerProvider = FillProvider<
+    JoinFill<JoinFill<Identity, TxFillers>, WalletFiller<EthereumWallet>>,
+    RootProvider<ThrottledTransport>,
+    ThrottledTransport,
     Ethereum,
 >;
 
 pub struct AlloySigner {
-    pub(crate) state_bridge_instance:
-        IStateBridgeInstance<Http<reqwest::Client>, AlloySignerProvider>,
+    pub state_bridge_address: Address,
+    pub provider: Arc<AlloySignerProvider>,
 }
 
 impl AlloySigner {
     pub fn new(
-        state_bridge: IStateBridgeInstance<
-            Http<reqwest::Client>,
-            AlloySignerProvider,
-        >,
+        state_bridge_address: Address,
+        provider: Arc<AlloySignerProvider>,
     ) -> Self {
         Self {
-            state_bridge_instance: state_bridge,
+            state_bridge_address,
+            provider,
         }
     }
 }
 
 impl RelaySigner for AlloySigner {
     async fn propagate_root(&self) -> Result<()> {
-        let transport =
-            self.state_bridge_instance.propagateRoot().send().await?;
+        let state_bridge_instance = IStateBridgeInstance::new(
+            self.state_bridge_address,
+            self.provider.clone(),
+        );
+
+        let transport = state_bridge_instance.propagateRoot().send().await?;
 
         match transport.get_receipt().await {
             Ok(receipt) => {
-                info!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
+                debug!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
             }
             Err(e) => {
                 error!(error = ?e, "Failed to propogate Root to State Bridge.");
@@ -116,7 +120,7 @@ impl RelaySigner for TxSitterSigner {
     /// This is a long running operation and should probably be awaited in a background task.
     async fn propagate_root(&self) -> Result<()> {
         let ethers_selector = ethers_core::types::Bytes::from_static(
-            PROPOGATE_ROOT_SELECTOR.as_ref(),
+            PROPAGATE_ROOT_SELECTOR.as_ref(),
         );
         let ethers_address = ethers_core::types::Address::from_slice(
             self.state_bridge_address.as_ref(),
