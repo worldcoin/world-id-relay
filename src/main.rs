@@ -17,7 +17,7 @@ use alloy::sol_types::SolEvent;
 use alloy_signer_local::coins_bip39::English;
 use clap::Parser;
 use config::{NetworkType, WalletConfig};
-use eyre::eyre::{eyre, OptionExt, Result};
+use eyre::eyre::{eyre, Result};
 use futures::StreamExt;
 use relay::signer::{AlloySigner, Signer, TxSitterSigner};
 use relay::{EVMRelay, Relay, Relayer};
@@ -183,28 +183,45 @@ pub async fn run(config: Config) -> Result<()> {
 /// Additionally initializes the signers from the global wallet configuration if present,
 /// otherwise from the bridged network configuration.
 fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
+    // Optinally use a global wallet configuration for all networks without a specific wallet configuration.
+    let global_signer = if let Some(wallet) = cfg.canonical_network.wallet {
+        match wallet {
+            WalletConfig::Mnemonic { mnemonic } => {
+                let signer = MnemonicBuilder::<English>::default()
+                    .phrase(mnemonic)
+                    .index(0)?
+                    .build()?;
+                let wallet = EthereumWallet::new(signer);
+
+                let provider =
+                    cfg.canonical_network.provider.signer(wallet.clone());
+
+                Some(Arc::new(provider))
+            }
+            _ => None,
+        }
+    } else {
+        None
+    };
     cfg.bridged_networks
         .iter()
         .map(|bridged| {
-            let wallet_config = bridged
-                .wallet
-                .as_ref()
-                .or(cfg.wallet.as_ref())
-                .ok_or_eyre("No wallet configuration found")?;
-
+            let wallet_config = bridged.wallet.as_ref();
             match bridged.ty {
                 NetworkType::Evm => match wallet_config {
-                    WalletConfig::Mnemonic { mnemonic } => {
+                    Some(WalletConfig::Mnemonic { mnemonic }) => {
                         let signer = MnemonicBuilder::<English>::default()
                             .phrase(mnemonic)
                             .index(0)?
                             .build()?;
                         let wallet = EthereumWallet::new(signer);
-
+                        let provider = cfg
+                            .canonical_network
+                            .provider
+                            .signer(wallet.clone());
                         let alloy_signer = AlloySigner::new(
                             bridged.state_bridge_addr,
-                            cfg.canonical_network.provider.clone(),
-                            wallet,
+                            Arc::new(provider),
                         );
 
                         Ok(Relayer::EVMRelay(EVMRelay::new(
@@ -213,7 +230,7 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                             bridged.provider.rpc_endpoint.clone(),
                         )))
                     }
-                    WalletConfig::TxSitter { url, gas_limit } => {
+                    Some(WalletConfig::TxSitter { url, gas_limit }) => {
                         let signer = TxSitterSigner::new(
                             url.as_str(),
                             bridged.state_bridge_addr,
@@ -225,6 +242,22 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                             bridged.world_id_addr,
                             bridged.provider.rpc_endpoint.clone(),
                         )))
+                    }
+                    None => {
+                        if let Some(global_signer) = &global_signer {
+                            let alloy_signer = AlloySigner::new(
+                                bridged.state_bridge_addr,
+                                global_signer.clone(),
+                            );
+
+                            Ok(Relayer::EVMRelay(EVMRelay::new(
+                                Signer::AlloySigner(alloy_signer),
+                                bridged.world_id_addr,
+                                bridged.provider.rpc_endpoint.clone(),
+                            )))
+                        } else {
+                            Err(eyre!("No wallet configuration found"))
+                        }
                     }
                 },
                 NetworkType::Svm => unimplemented!(),

@@ -12,7 +12,6 @@ address = "0xb2ead588f14e69266d1b87936b75325181377076"
 state_bridge_addr = "0x2F418Aa7D500B525EE8B80BB5F643A877ef82e09"
 world_id_addr = "0xE177F37AF0A862A02edFEa4F59C02668E9d0aAA4"
 provider = { rpc_endpoint = "https://eth.llamarpc.com" }
-wallet = { type = "mnemonic", mnemonic = "your mnemonic here" }
 
 [[bridged_networks]]
 type = "evm"
@@ -21,7 +20,6 @@ address = "0xb2ead588f14e69266d1b87936b75325181377076"
 state_bridge_addr = "0x158379286D7083dDA05930CD3C6374954Fb511aA"
 world_id_addr = "0xf07d3efadD82A1F0b4C5Cc3476806d9a170147Ba"
 provider = { rpc_endpoint = "https://eth.llamarpc.com" }
-wallet = { type = "mnemonic", mnemonic = "your mnemonic here" }
 
 [[bridged_networks]]
 type = "evm"
@@ -30,5 +28,4 @@ address = "0xb2ead588f14e69266d1b87936b75325181377076"
 state_bridge_addr = "0x5fFe37995158528d97A819bA390C1F81d74eB2b9"
 world_id_addr = "0x163b09b4fE21177c455D850BD815B6D583732432"
 provider = { rpc_endpoint = "https://eth.llamarpc.com" }
-wallet = { type = "mnemonic", mnemonic = "your mnemonic here" }
 

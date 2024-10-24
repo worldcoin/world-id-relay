@@ -1,5 +1,12 @@
-use alloy::network::EthereumWallet;
+use std::sync::Arc;
+
+use alloy::network::{Ethereum, EthereumWallet};
 use alloy::primitives::{bytes, Address, Bytes};
+use alloy::providers::fillers::{
+    BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill,
+    NonceFiller, WalletFiller,
+};
+use alloy::providers::{Identity, RootProvider};
 use ethers_core::types::U256;
 use eyre::eyre::{eyre, Result};
 use tracing::{debug, error, info};
@@ -7,7 +14,7 @@ use tx_sitter_client::data::{SendTxRequest, TransactionPriority, TxStatus};
 use tx_sitter_client::TxSitterClient;
 
 use crate::abi::IStateBridge::IStateBridgeInstance;
-use crate::config::ProviderConfig;
+use crate::config::ThrottledTransport;
 
 /// keccak256("propagateRoot()")[..4]
 pub static PROPAGATE_ROOT_SELECTOR: Bytes = bytes!("380db829");
@@ -32,22 +39,35 @@ macro_rules! signer {
     }
 }
 
+pub type AlloySignerProvider = FillProvider<
+    JoinFill<
+        JoinFill<
+            Identity,
+            JoinFill<
+                GasFiller,
+                JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>,
+            >,
+        >,
+        WalletFiller<EthereumWallet>,
+    >,
+    RootProvider<ThrottledTransport>,
+    ThrottledTransport,
+    Ethereum,
+>;
+
 pub struct AlloySigner {
     pub state_bridge_address: Address,
-    pub provider: ProviderConfig,
-    wallet: EthereumWallet,
+    pub provider: Arc<AlloySignerProvider>,
 }
 
 impl AlloySigner {
     pub fn new(
         state_bridge_address: Address,
-        provider: ProviderConfig,
-        wallet: EthereumWallet,
+        provider: Arc<AlloySignerProvider>,
     ) -> Self {
         Self {
             state_bridge_address,
             provider,
-            wallet,
         }
     }
 }
@@ -56,7 +76,7 @@ impl RelaySigner for AlloySigner {
     async fn propagate_root(&self) -> Result<()> {
         let state_bridge_instance = IStateBridgeInstance::new(
             self.state_bridge_address,
-            self.provider.signer(self.wallet.clone()),
+            self.provider.clone(),
         );
 
         let transport = state_bridge_instance.propagateRoot().send().await?;

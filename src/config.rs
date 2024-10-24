@@ -11,12 +11,12 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::relay::signer::AlloySignerProvider;
+
 pub type ThrottledTransport = RetryBackoffService<Http<Client>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// The global wallet configuration
-    pub wallet: Option<WalletConfig>,
     /// The network from which roots will be propagated
     pub canonical_network: CanonicalNetworkConfig,
     /// The networks to which roots will be propagated
@@ -77,6 +77,8 @@ impl fmt::Debug for BridgedNetworkConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CanonicalNetworkConfig {
     pub world_id_addr: Address,
+    /// The global wallet configuration
+    pub wallet: Option<WalletConfig>,
     /// The number of blocks in the past to start scanning for new root events
     #[serde(default = "default::start_scan")]
     pub start_scan: u64,
@@ -130,10 +132,7 @@ impl ProviderConfig {
         ProviderBuilder::new().on_client(client)
     }
 
-    pub fn signer(
-        &self,
-        wallet: EthereumWallet,
-    ) -> impl Provider<ThrottledTransport> {
+    pub fn signer(&self, wallet: EthereumWallet) -> AlloySignerProvider {
         let client = ClientBuilder::default()
             .layer(RetryBackoffLayer::new(
                 self.max_rate_limit_retries,
