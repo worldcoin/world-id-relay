@@ -3,6 +3,9 @@ use std::path::Path;
 
 use alloy::network::EthereumWallet;
 use alloy::primitives::Address;
+use alloy::providers::fillers::{
+    BlobGasFiller, CachedNonceManager, ChainIdFiller, GasFiller, NonceFiller,
+};
 use alloy::providers::{Provider, ProviderBuilder};
 use alloy::rpc::client::ClientBuilder;
 use alloy::transports::http::Http;
@@ -140,8 +143,11 @@ impl ProviderConfig {
                 self.compute_units_per_second,
             ))
             .http(self.rpc_endpoint.clone());
-        ProviderBuilder::default()
-            .with_recommended_fillers()
+        ProviderBuilder::new()
+            .filler(ChainIdFiller::default())
+            .filler(NonceFiller::new(CachedNonceManager::default()))
+            .filler(BlobGasFiller)
+            .filler(GasFiller::default())
             .wallet(wallet)
             .on_client(client)
     }

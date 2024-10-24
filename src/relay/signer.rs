@@ -3,8 +3,8 @@ use std::sync::Arc;
 use alloy::network::{Ethereum, EthereumWallet};
 use alloy::primitives::{bytes, Address, Bytes};
 use alloy::providers::fillers::{
-    BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill,
-    NonceFiller, WalletFiller,
+    BlobGasFiller, CachedNonceManager, ChainIdFiller, FillProvider, GasFiller,
+    JoinFill, NonceFiller, WalletFiller,
 };
 use alloy::providers::{Identity, RootProvider};
 use ethers_core::types::U256;
@@ -42,11 +42,14 @@ macro_rules! signer {
 pub type AlloySignerProvider = FillProvider<
     JoinFill<
         JoinFill<
-            Identity,
             JoinFill<
-                GasFiller,
-                JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>,
+                JoinFill<
+                    JoinFill<Identity, ChainIdFiller>,
+                    NonceFiller<CachedNonceManager>,
+                >,
+                BlobGasFiller,
             >,
+            GasFiller,
         >,
         WalletFiller<EthereumWallet>,
     >,

@@ -25,6 +25,7 @@ use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
 use tokio::task::JoinSet;
+use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -245,6 +246,7 @@ fn init_relays(cfg: Config) -> Result<Vec<Relayer>> {
                     }
                     None => {
                         if let Some(global_signer) = &global_signer {
+                            info!(network = %bridged.name, "Using global wallet configuration for bridged network");
                             let alloy_signer = AlloySigner::new(
                                 bridged.state_bridge_addr,
                                 global_signer.clone(),
