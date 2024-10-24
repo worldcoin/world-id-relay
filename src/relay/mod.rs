@@ -69,8 +69,14 @@ impl Relay for EVMRelay {
             let latest = world_id.latestRoot().call().await?._0;
 
             if latest != field {
-                tracing::trace!(new_root = ?field, latest_root =?latest, "Propagating root");
-                self.signer.propagate_root().await?;
+                match self.signer.propagate_root().await {
+                    Ok(_) => {
+                        tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");
+                    }
+                    Err(e) => {
+                        tracing::error!(error = %e, root = %field, previous_root=%latest, provider = %self.provider, "Failed to propagate root");
+                    }
+                }
                 // We sleep for 2 blocks, so we don't resend the same root prior to derivation of the message on L2.
                 std::thread::sleep(std::time::Duration::from_secs(
                     ROOT_PROPAGATION_BACKOFF,

@@ -2,7 +2,7 @@ use alloy::network::EthereumWallet;
 use alloy::primitives::{bytes, Address, Bytes};
 use ethers_core::types::U256;
 use eyre::eyre::{eyre, Result};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use tx_sitter_client::data::{SendTxRequest, TransactionPriority, TxStatus};
 use tx_sitter_client::TxSitterClient;
 
@@ -63,7 +63,7 @@ impl RelaySigner for AlloySigner {
 
         match transport.get_receipt().await {
             Ok(receipt) => {
-                info!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
+                debug!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
             }
             Err(e) => {
                 error!(error = ?e, "Failed to propogate Root to State Bridge.");
