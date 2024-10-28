@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 eyre = { version = "0.6", package = "color-eyre" }
 clap = { version = "4.4.8", features = ["derive", "env"] }
-config = "0.14.0"
+config = "0.14.1"
 dotenv = "0.15.0"
 alloy = { version = "0.5", features = [
     "providers",
