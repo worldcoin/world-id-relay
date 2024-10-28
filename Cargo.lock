@@ -347,7 +347,7 @@ dependencies = [
  "lru",
  "parking_lot",
  "pin-project",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "schnellru",
  "serde",
  "serde_json",
@@ -392,7 +392,7 @@ dependencies = [
  "alloy-transport-http",
  "futures",
  "pin-project",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "tokio",
@@ -581,7 +581,7 @@ dependencies = [
  "http-body-util",
  "hyper 1.5.0",
  "hyper-util",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde_json",
  "tower",
  "tracing",
@@ -4790,7 +4790,7 @@ dependencies = [
  "opentelemetry-http",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "rmp",
  "ryu",
  "thiserror",
@@ -4807,7 +4807,7 @@ dependencies = [
  "bytes",
  "http 1.1.0",
  "opentelemetry",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
 ]
 
 [[package]]
@@ -5720,9 +5720,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.8"
+version = "0.12.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f713147fbe92361e52392c73b8c9e48c04c6625bce969ef54dc901e58e042a7b"
+checksum = "a77c62af46e79de0a562e1a9849205ffcb7fc1238876e9bd743357570e04046f"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -7037,7 +7037,7 @@ dependencies = [
  "opentelemetry-http",
  "opentelemetry_sdk",
  "rand",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "thiserror",
@@ -7065,7 +7065,7 @@ dependencies = [
  "opentelemetry-http",
  "opentelemetry_sdk",
  "rand",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "thiserror",
@@ -7694,7 +7694,7 @@ source = "git+https://github.com/worldcoin/signup-sequencer?rev=f30275b#f30275b0
 dependencies = [
  "anyhow",
  "ethers",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "serde",
  "serde_json",
  "strum 0.25.0",
@@ -8347,7 +8347,7 @@ dependencies = [
  "pin-project",
  "pin-utils",
  "rand",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "rkyv",
  "rusty_pool",
  "semver 1.0.23",
@@ -8882,7 +8882,7 @@ dependencies = [
  "indoc",
  "rand",
  "rayon",
- "reqwest 0.12.8",
+ "reqwest 0.12.9",
  "ruint",
  "semaphore",
  "serde",
