@@ -3,5 +3,8 @@ target/
 .git
 .env
 .env.example
+config.*
 Dockerfile
 README.md
+LICENSE
+

@@ -19,7 +19,8 @@ use crate::relay::signer::{AlloySignerProvider, TxFillers};
 
 pub type ThrottledTransport = RetryBackoffService<Http<Client>>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Config {
     /// The network from which roots will be propagated
     pub canonical_network: CanonicalNetworkConfig,
@@ -31,12 +32,13 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load(config_path: Option<&Path>) -> eyre::Result<Self> {
+    pub fn load(config_path: Option<impl AsRef<Path>>) -> eyre::Result<Self> {
+        dotenv::dotenv().ok();
         let mut settings = config::Config::builder();
 
         if let Some(path) = config_path {
-            settings =
-                settings.add_source(config::File::from(path).required(true));
+            settings = settings
+                .add_source(config::File::from(path.as_ref()).required(true));
         }
 
         let settings = settings

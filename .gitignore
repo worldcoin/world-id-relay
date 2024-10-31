@@ -1,7 +1,7 @@
 /target
 .DS_Store
 ips.toml
-.env
+*.env
 
 config.mainnet.toml
 config.staging.toml
