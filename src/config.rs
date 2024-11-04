@@ -19,7 +19,6 @@ use crate::relay::signer::{AlloySignerProvider, TxFillers};
 
 pub type ThrottledTransport = RetryBackoffService<Http<Client>>;
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Config {
     /// The network from which roots will be propagated
