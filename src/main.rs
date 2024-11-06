@@ -26,6 +26,7 @@ use telemetry_batteries::metrics::statsd::StatsdBattery;
 use telemetry_batteries::tracing::datadog::DatadogBattery;
 use telemetry_batteries::tracing::TracingShutdownHandle;
 use tokio::task::JoinSet;
+use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -92,7 +93,7 @@ pub async fn main() -> Result<()> {
         TracingShutdownHandle
     };
 
-    tracing::info!(?config, "Starting World Tree service");
+    info!(?config, "Starting world-id-relay");
 
     run(config).await
 }
