@@ -464,9 +464,9 @@ dependencies = [
 
 [[package]]
 name = "alloy-signer-local"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6045969544cba7491ce6a9fe0df101bff05f32146c41ee5cb91d075d6538927a"
+checksum = "bc1f6602be452e3bb5b6c2fe0fa0f966465f9e9bfd6ad7691bfe1bd8b74bf432"
 dependencies = [
  "alloy-consensus",
  "alloy-network",
