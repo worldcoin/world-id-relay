@@ -33,7 +33,7 @@ ruint = "1.11.0"
 serde = { version = "1.0.214", features = ["derive"] }
 serde_json = "1.0"
 serde_path_to_error = "0.1.16"
-telemetry-batteries = { git = "https://github.com/worldcoin/telemetry-batteries.git", rev = "aca1376" }
+telemetry-batteries = { git = "https://github.com/worldcoin/telemetry-batteries.git", rev = "12cc036234b4e9b86f22ff7e35d499e2ff1e6304" }
 thiserror = "2"
 tokio = { version = "1.41.0", features = ["sync", "macros", "rt-multi-thread"] }
 toml = "0.8"
