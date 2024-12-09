@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 eyre = { version = "0.6", package = "color-eyre" }
-clap = { version = "4.4.8", features = ["derive", "env"] }
+clap = { version = "4.5.23", features = ["derive", "env"] }
 # https://github.com/rust-cli/config-rs/pull/597
 config = { version = "0.14.0", git = "https://github.com/ewoolsey/config-rs", branch = "env_list_of_structs" }
 dotenv = "0.15.0"
