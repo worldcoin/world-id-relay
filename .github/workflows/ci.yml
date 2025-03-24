@@ -21,7 +21,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Cache
-        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # pin@v4.1.2
+        uses: actions/cache@v4
         continue-on-error: false
         with:
           path: |
