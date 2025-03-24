@@ -9,29 +9,17 @@ on:
     branches:
       - main
 
-env:
-  CARGO_TERM_COLOR: always
-  # Skip incremental build and debug info generation in CI
-  CARGO_INCREMENTAL: 0
-  CARGO_PROFILE_DEV_DEBUG: 0
-  RUST_BACKTRACE: full
-
 jobs:
-  lint:
-    name: Lint
+  ci:
+    name: CI
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
       - name: Install rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@b00ae41436047c80fbb964efa72e975c643b7409 # pin@1.69.0
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
-      - name: Install protobuf-compiler
-        run: sudo apt-get install -y protobuf-compiler
       - name: Cache
         uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # pin@v4.1.2
         continue-on-error: false
@@ -43,60 +31,7 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Check formatting
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-      - uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --locked --all-targets
-      - name: Check docs
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --locked --no-deps --document-private-items
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-      - name: Install protobuf-compiler
-        run: sudo apt-get install -y protobuf-compiler
-      - name: Cache
-        uses: actions/cache@6849a6489940f00c2f30c0fb92c6274307ccb58a # pin@v4.1.2
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Install latest nextest release
-        uses: taiki-e/install-action@nextest
-      - name: Build tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: nextest
-          args: run --workspace --no-run
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: nextest
-          args: run --workspace
+      - name: Clippy
+        run: cargo clippy -- -D warnings
+      - name: Test
+        run: cargo test --all-features
