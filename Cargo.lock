@@ -1800,7 +1800,7 @@ dependencies = [
 [[package]]
 name = "config"
 version = "0.14.1"
-source = "git+https://github.com/ewoolsey/config-rs?branch=env_list_of_structs#65231a0da62f39395491a93ad1ac68186ba4f933"
+source = "git+https://github.com/0xforerunner/config-rs?branch=env_list_of_structs#65231a0da62f39395491a93ad1ac68186ba4f933"
 dependencies = [
  "async-trait",
  "convert_case",
