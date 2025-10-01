@@ -12,6 +12,8 @@ use alloy::sol_types::SolEvent;
 use alloy::transports::Transport;
 use eyre::Result;
 use futures::{stream, FutureExt as _, Stream, StreamExt as _};
+use telemetry_batteries::reexports::metrics::gauge;
+use tracing::trace;
 
 use crate::abi::IWorldIDIdentityManager::TreeChanged;
 use crate::utils::retry;
@@ -114,8 +116,9 @@ where
                         let provider = provider.clone();
                         let filter = filter.clone();
                         async move {
-                            tracing::trace!(?chain_id, ?last_synced_block,);
                             let logs = provider.get_logs(&filter).await?;
+                            trace!(?chain_id, ?last_synced_block);
+                            gauge!("last_synced_block", "chain_id" => chain_id.to_string()).set(last_synced_block as f64);
                             Ok(logs)
                         }
                     },
