@@ -8,7 +8,7 @@ license = "MIT OR Apache-2.0"
 eyre = { version = "0.6", package = "color-eyre" }
 clap = { version = "4.5.29", features = ["derive", "env"] }
 # https://github.com/rust-cli/config-rs/pull/597
-config = { version = "0.14.0", git = "https://github.com/ewoolsey/config-rs", branch = "env_list_of_structs" }
+config = { version = "0.14.0", git = "https://github.com/0xforerunner/config-rs", branch = "env_list_of_structs" }
 dotenv = "0.15.0"
 alloy = { version = "0.6", features = [
     "providers",
@@ -33,7 +33,7 @@ ruint = "1.11.0"
 serde = { version = "1.0.214", features = ["derive"] }
 serde_json = "1.0"
 serde_path_to_error = "0.1.16"
-telemetry-batteries = { git = "https://github.com/worldcoin/telemetry-batteries.git", rev = "aca1376" }
+telemetry-batteries = { git = "https://github.com/worldcoin/telemetry-batteries.git" }
 thiserror = "2"
 tokio = { version = "1.41.0", features = ["sync", "macros", "rt-multi-thread"] }
 toml = "0.8"
