@@ -1,4 +1,4 @@
-FROM debian:12 AS chef
+FROM debian:13 AS chef
 
 WORKDIR /app
 
