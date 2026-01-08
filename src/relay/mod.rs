@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use alloy::primitives::Address;
 use alloy::providers::ProviderBuilder;
+use backon::Retryable;
 use eyre::Result;
 use semaphore::Field;
 use signer::{RelaySigner, Signer};
@@ -13,10 +14,14 @@ use url::Url;
 
 use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
 
-const MAX_RETRIES: u64 = 50;
+/// Maximum numbers to retry a `relayRoot` request before terminating
+const MAX_RETRIES: usize = 50;
 
 /// How long we should wait before retrying a failed `relayRoot` request
-pub const RELAY_ROOT_RETRY_BACKOFF: Duration = Duration::from_millis(1000);
+const RELAY_ROOT_RETRY_MIN_BACKOFF: Duration = Duration::from_millis(10);
+
+/// Maximum exponential backoff to wait before retrying a failed `relayRoot` request
+const RELAY_ROOT_RETRY_MAX_BACKOFF: Duration = Duration::from_secs(300);
 
 // Two Mainnet Blocks
 pub const ROOT_PROPAGATION_BACKOFF: u64 = 24;
@@ -69,45 +74,32 @@ impl Relay for EVMRelay {
             l2_provider,
         ));
 
-        let propagate_root = || async { self.signer.propagate_root().await };
-
         loop {
             let field = rx.recv().await?;
-            // we sit here until a new `RootUpdated` event
             let world_id = world_id_instance.clone();
-            let latest = world_id.latestRoot().call().await?._0;
 
-            if latest != field {
-                match propagate_root().await {
-                    Ok(_) => {
-                        tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");
-                    }
-                    Err(e) => {
-                        tracing::error!(error = %e, root = %field, previous_root=%latest, total_retries = 0, provider = %self.provider, "Failed to propagate root");
+            let f = || async {
+                // refetch latest as the contract may have been updated from another relayer
+                let latest = world_id.latestRoot().call().await?._0;
 
-                        let mut total_retries = 0;
-                        while total_retries < MAX_RETRIES {
-                            match propagate_root().await {
-                                Ok(_) => {
-                                    break;
-                                }
-                                Err(e) => {
-                                    tracing::error!(error = %e, root = %field, previous_root=%latest, total_retries = %total_retries, provider = %self.provider, "Failed to propagate root");
-                                    total_retries += 1;
-                                    tokio::time::sleep(
-                                        RELAY_ROOT_RETRY_BACKOFF,
-                                    )
-                                    .await;
-                                }
-                            }
-                        }
-                    }
+                if latest != field {
+                    self.signer.propagate_root().await?;
                 }
-                // We sleep for 2 blocks, so we don't resend the same root prior to derivation of the message on L2.
-                std::thread::sleep(std::time::Duration::from_secs(
-                    ROOT_PROPAGATION_BACKOFF,
-                ));
-            }
+
+                tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");
+
+                Ok::<(), eyre::Report>(())
+            };
+
+            f.retry(
+                backon::ExponentialBuilder::default()
+                    .with_min_delay(RELAY_ROOT_RETRY_MIN_BACKOFF)
+                    .with_max_delay(RELAY_ROOT_RETRY_MAX_BACKOFF)
+                    .with_max_times(MAX_RETRIES),
+            )
+            .notify(|e, duration| {
+                tracing::error!(error = %e, root = %field, total_time_retried = ?duration, provider = %self.provider, "Failed to propagate root");
+            }).await?;
         }
     }
 }

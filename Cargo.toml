@@ -46,6 +46,7 @@ reqwest = { version = "0.12", features = ["json"] }
 semaphore = { git = "https://github.com/worldcoin/semaphore-rs", rev = "d0d1f89", features = [
     "depth_30",
 ] }
+backon = "1.5.2"
 
 [dev-dependencies]
 tempfile = "3.17.1"
