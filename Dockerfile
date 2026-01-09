@@ -37,5 +37,5 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 WORKDIR /app
 ENV RUST_LOG="info"
-COPY --from=builder -from=builder --chown=0:10001 --chmod=454 /app/target/release/world-id-relay /usr/local/bin/
+COPY --from=builder --chown=0:10001 --chmod=454 /app/target/release/world-id-relay /usr/local/bin/
 ENTRYPOINT [ "/usr/local/bin/world-id-relay" ]
