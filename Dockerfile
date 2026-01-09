@@ -1,46 +1,41 @@
-FROM debian:12 AS chef
-
+FROM public.ecr.aws/docker/library/rust:1.92.0-bookworm AS base
 WORKDIR /app
 
-# Install dependencies
-RUN apt-get update && \
-    apt-get install -y \
-    curl build-essential \
-    libssl-dev texinfo \
-    libcap2-bin pkg-config
-
-# Install rustup
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-
-COPY ./rust-toolchain.toml ./rust-toolchain.toml
-
-# Set environment variables
-ENV PATH="/root/.cargo/bin:${PATH}"
-ENV RUSTUP_HOME="/root/.rustup"
-ENV CARGO_HOME="/root/.cargo"
-
-# Install the toolchain
-RUN rustup component add cargo
-
 # Install cargo chef
-RUN cargo install cargo-chef --locked
+RUN cargo install sccache --version ^0.9
+RUN cargo install cargo-chef --version ^0.1
 
-FROM chef AS planner
+ENV CARGO_HOME=/usr/local/cargo
+ENV RUSTC_WRAPPER=sccache
+ENV SCCACHE_DIR=/sccache
+
+FROM base AS planner
+
 COPY . .
-RUN cargo chef prepare  --recipe-path recipe.json
 
-FROM chef AS builder
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+  --mount=type=cache,target=/usr/local/cargo/git \
+  --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+  cargo chef prepare  --recipe-path recipe.json
+
+FROM base AS builder
 COPY --from=planner /app/recipe.json recipe.json
+
 # Build dependencies
-RUN cargo chef cook --release --recipe-path recipe.json
+RUN --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+        cargo chef cook --release --recipe-path recipe.json
+
 # Build application
-COPY . .
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
+    cargo build --release --bin world-id-relay
 
 
 ### Runtime stage
 ## cc variant because we need libgcc and others
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 WORKDIR /app
-COPY --from=builder --chown=0:10001 --chmod=454 /app/target/release/world-id-relay /bin/app
-ENTRYPOINT [ "/bin/app" ]
+ENV RUST_LOG="info"
+COPY --from=builder -from=builder --chown=0:10001 --chmod=454 /app/target/release/world-id-relay /usr/local/bin/
+ENTRYPOINT [ "/usr/local/bin/world-id-relay" ]
