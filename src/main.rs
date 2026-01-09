@@ -42,7 +42,7 @@ struct Opts {
     config: Option<PathBuf>,
 
     /// Set to disable colors in the logs
-    #[clap(long)]
+    #[clap(long, env, default_value_t = true)]
     no_ansi: bool,
 }
 
