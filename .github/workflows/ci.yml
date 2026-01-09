@@ -30,6 +30,6 @@ jobs:
             key: cargo-test-${{ hashFiles('**/Cargo.lock') }}
             restore-keys: cargo-test-   
         - name: clippy
-          run: cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings
+          run: cargo clippy --workspace --all-targets --all-features -- -D warnings
         - name: test
           run: cargo nextest run --workspace --all-targets --all-features
