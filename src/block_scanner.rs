@@ -1,22 +1,21 @@
-use std::fmt::Debug;
-use std::future::Future;
-use std::marker::PhantomData;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    fmt::Debug, future::Future, marker::PhantomData, sync::Arc, time::Duration,
+};
 
-use alloy::eips::BlockNumberOrTag;
-use alloy::network::Ethereum;
-use alloy::providers::Provider;
-use alloy::rpc::types::{Filter, Log};
-use alloy::sol_types::SolEvent;
-use alloy::transports::Transport;
+use alloy::{
+    eips::BlockNumberOrTag,
+    network::Ethereum,
+    providers::Provider,
+    rpc::types::{Filter, Log},
+    sol_types::SolEvent,
+    transports::Transport,
+};
 use eyre::Result;
 use futures::{stream, FutureExt as _, Stream, StreamExt as _};
 use telemetry_batteries::reexports::metrics::gauge;
 use tracing::trace;
 
-use crate::abi::IWorldIDIdentityManager::TreeChanged;
-use crate::utils::retry;
+use crate::{abi::IWorldIDIdentityManager::TreeChanged, utils::retry};
 
 pub const BLOCK_SCANNER_SLEEP_TIME: u64 = 5;
 

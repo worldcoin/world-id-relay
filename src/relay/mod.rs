@@ -1,13 +1,13 @@
 pub mod signer;
 
-use std::sync::Arc;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
-use alloy::primitives::Address;
-use alloy::providers::ProviderBuilder;
+use alloy::{
+    primitives::{Address, U256},
+    providers::ProviderBuilder,
+};
 use backon::Retryable;
 use eyre::Result;
-use semaphore::Field;
 use signer::{RelaySigner, Signer};
 use tokio::sync::broadcast::Receiver;
 use url::Url;
@@ -28,7 +28,7 @@ pub const ROOT_PROPAGATION_BACKOFF: u64 = 24;
 
 pub(crate) trait Relay {
     /// Subscribe to the stream of new Roots on L1.
-    async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()>;
+    async fn subscribe_roots(&self, rx: Receiver<U256>) -> Result<()>;
 }
 
 macro_rules! relay {
@@ -37,7 +37,7 @@ macro_rules! relay {
             $($relay_type($relay_type),)+
         }
         impl Relay for Relayer {
-            async fn subscribe_roots(&self, rx: Receiver<Field>) -> Result<()> {
+            async fn subscribe_roots(&self, rx: Receiver<U256>) -> Result<()> {
                 match self {
                     $(Relayer::$relay_type(relay) => Ok(relay.subscribe_roots(rx).await?),)+
                 }
@@ -67,7 +67,7 @@ impl EVMRelay {
 }
 
 impl Relay for EVMRelay {
-    async fn subscribe_roots(&self, mut rx: Receiver<Field>) -> Result<()> {
+    async fn subscribe_roots(&self, mut rx: Receiver<U256>) -> Result<()> {
         let l2_provider = ProviderBuilder::new().on_http(self.provider.clone());
         let world_id_instance = Arc::new(IBridgedWorldIDInstance::new(
             self.world_id_address,
@@ -107,7 +107,7 @@ impl Relay for EVMRelay {
 pub struct SvmRelay;
 
 impl Relay for SvmRelay {
-    async fn subscribe_roots(&self, _rx: Receiver<Field>) -> Result<()> {
+    async fn subscribe_roots(&self, _rx: Receiver<U256>) -> Result<()> {
         unimplemented!()
     }
 }

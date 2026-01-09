@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
         - uses: actions/checkout@v4
-        - uses: dtolnay/rust-toolchain@nightly
+        - uses: dtolnay/rust-toolchain@stable
           with:
             components: rustfmt, clippy
         - uses: taiki-e/install-action@nextest
@@ -32,4 +32,4 @@ jobs:
         - name: clippy
           run: cargo +nightly clippy --workspace --all-targets --all-features -- -D warnings
         - name: test
-          run: cargo nextest run --workspace --all-targets --all-features -- -D warnings
+          run: cargo nextest run --workspace --all-targets --all-features
