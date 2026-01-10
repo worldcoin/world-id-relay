@@ -1,16 +1,22 @@
 use core::fmt;
 use std::path::Path;
 
-use alloy::network::EthereumWallet;
-use alloy::primitives::Address;
-use alloy::providers::fillers::{
-    BlobGasFiller, CachedNonceManager, ChainIdFiller, GasFiller, JoinFill,
-    NonceFiller,
+use alloy::{
+    network::EthereumWallet,
+    primitives::Address,
+    providers::{
+        fillers::{
+            BlobGasFiller, CachedNonceManager, ChainIdFiller, GasFiller,
+            JoinFill, NonceFiller,
+        },
+        Provider, ProviderBuilder,
+    },
+    rpc::client::ClientBuilder,
+    transports::{
+        http::Http,
+        layers::{RetryBackoffLayer, RetryBackoffService},
+    },
 };
-use alloy::providers::{Provider, ProviderBuilder};
-use alloy::rpc::client::ClientBuilder;
-use alloy::transports::http::Http;
-use alloy::transports::layers::{RetryBackoffLayer, RetryBackoffService};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use url::Url;

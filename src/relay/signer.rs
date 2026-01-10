@@ -1,20 +1,27 @@
 use std::sync::Arc;
 
-use alloy::network::{Ethereum, EthereumWallet};
-use alloy::primitives::{bytes, Address, Bytes};
-use alloy::providers::fillers::{
-    BlobGasFiller, CachedNonceManager, ChainIdFiller, FillProvider, GasFiller,
-    JoinFill, NonceFiller, WalletFiller,
+use alloy::{
+    network::{Ethereum, EthereumWallet},
+    primitives::{bytes, Address, Bytes},
+    providers::{
+        fillers::{
+            BlobGasFiller, CachedNonceManager, ChainIdFiller, FillProvider,
+            GasFiller, JoinFill, NonceFiller, WalletFiller,
+        },
+        Identity, RootProvider,
+    },
 };
-use alloy::providers::{Identity, RootProvider};
 use ethers_core::types::U256;
 use eyre::eyre::{eyre, Result};
 use tracing::{debug, error, info};
-use tx_sitter_client::data::{SendTxRequest, TransactionPriority, TxStatus};
-use tx_sitter_client::TxSitterClient;
+use tx_sitter_client::{
+    data::{SendTxRequest, TransactionPriority, TxStatus},
+    TxSitterClient,
+};
 
-use crate::abi::IStateBridge::IStateBridgeInstance;
-use crate::config::ThrottledTransport;
+use crate::{
+    abi::IStateBridge::IStateBridgeInstance, config::ThrottledTransport,
+};
 
 /// keccak256("propagateRoot()")[..4]
 pub static PROPAGATE_ROOT_SELECTOR: Bytes = bytes!("380db829");

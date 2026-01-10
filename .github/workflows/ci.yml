@@ -14,24 +14,22 @@ jobs:
     name: CI
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # pin@v4.2.2
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@b00ae41436047c80fbb964efa72e975c643b7409 # pin@1.69.0
-        with:
-          components: rustfmt, clippy
-      - name: Cache
-        uses: actions/cache@v4
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Clippy
-        run: cargo clippy -- -D warnings
-      - name: Test
-        run: cargo test --all-features
+        - uses: actions/checkout@v4
+        - uses: dtolnay/rust-toolchain@stable
+          with:
+            components: rustfmt, clippy
+        - uses: taiki-e/install-action@nextest
+        - name: Cache
+          uses: actions/cache@v3
+          continue-on-error: false
+          with:
+            path: |
+              ~/.cargo/registry/index/
+              ~/.cargo/registry/cache/
+              ~/.cargo/git/db/
+            key: cargo-test-${{ hashFiles('**/Cargo.lock') }}
+            restore-keys: cargo-test-   
+        - name: clippy
+          run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        - name: test
+          run: cargo nextest run --workspace --all-targets --all-features

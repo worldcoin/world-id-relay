@@ -2,38 +2,35 @@ pub mod abi;
 pub mod block_scanner;
 pub mod config;
 pub mod relay;
-pub mod tx_sitter;
 pub mod utils;
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use alloy::network::EthereumWallet;
-use alloy::primitives::U256;
-use alloy::providers::Provider;
-use alloy::rpc::types::Filter;
-use alloy::signers::local::MnemonicBuilder;
-use alloy::sol_types::SolEvent;
+use alloy::{
+    network::EthereumWallet, primitives::U256, providers::Provider,
+    rpc::types::Filter, signers::local::MnemonicBuilder, sol_types::SolEvent,
+};
 use alloy_signer_local::coins_bip39::English;
 use clap::Parser;
 use config::{NetworkType, WalletConfig};
 use eyre::eyre::{eyre, Result};
 use futures::StreamExt;
-use relay::signer::{AlloySigner, Signer, TxSitterSigner};
-use relay::{EVMRelay, Relay, Relayer};
-use telemetry_batteries::metrics::statsd::StatsdBattery;
-use telemetry_batteries::tracing::datadog::DatadogBattery;
-use telemetry_batteries::tracing::TracingShutdownHandle;
+use relay::{
+    signer::{AlloySigner, Signer, TxSitterSigner},
+    EVMRelay, Relay, Relayer,
+};
+use telemetry_batteries::{
+    metrics::statsd::StatsdBattery,
+    tracing::{datadog::DatadogBattery, TracingShutdownHandle},
+};
 use tokio::task::JoinSet;
 use tracing::info;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use self::abi::IWorldIDIdentityManager::TreeChanged;
-use self::block_scanner::BlockScanner;
-use self::config::Config;
-use self::relay::signer::AlloySignerProvider;
+use self::{
+    abi::IWorldIDIdentityManager::TreeChanged, block_scanner::BlockScanner,
+    config::Config, relay::signer::AlloySignerProvider,
+};
 
 /// This service syncs the state of the World Tree and spawns a server that can deliver inclusion proofs for a given identity.
 #[derive(Parser, Debug)]
@@ -45,7 +42,7 @@ struct Opts {
     config: Option<PathBuf>,
 
     /// Set to disable colors in the logs
-    #[clap(long)]
+    #[clap(long, env, default_value_t = true)]
     no_ansi: bool,
 }
 
@@ -105,9 +102,8 @@ pub async fn run(config: Config) -> Result<()> {
     let latest_block_number = provider.get_block_number().await?;
 
     // // Start in the past by approximately 2 hours
-    let start_block_number = latest_block_number
-        .checked_sub(config.canonical_network.start_scan)
-        .unwrap_or_default();
+    let start_block_number =
+        latest_block_number.saturating_sub(config.canonical_network.start_scan);
 
     let filter = Filter::new()
         .address(config.canonical_network.world_id_addr)

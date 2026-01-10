@@ -1,4 +1,4 @@
-FROM debian:12 AS chef
+FROM rust:1.90.0-bookworm AS chef
 
 WORKDIR /app
 
@@ -9,18 +9,12 @@ RUN apt-get update && \
     libssl-dev texinfo \
     libcap2-bin pkg-config
 
-# Install rustup
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
-
-COPY ./rust-toolchain.toml ./rust-toolchain.toml
-
 # Set environment variables
 ENV PATH="/root/.cargo/bin:${PATH}"
 ENV RUSTUP_HOME="/root/.rustup"
 ENV CARGO_HOME="/root/.cargo"
 
-# Install the toolchain
-RUN rustup component add cargo
+RUN rustup default stable
 
 # Install cargo chef
 RUN cargo install cargo-chef --locked
@@ -42,5 +36,6 @@ RUN cargo build --release
 ## cc variant because we need libgcc and others
 FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
 WORKDIR /app
+
 COPY --from=builder --chown=0:10001 --chmod=454 /app/target/release/world-id-relay /bin/app
 ENTRYPOINT [ "/bin/app" ]
