@@ -6,22 +6,21 @@ use alloy::{
     primitives::{Address, U256},
     providers::ProviderBuilder,
 };
-use backon::Retryable;
 use eyre::Result;
 use signer::{RelaySigner, Signer};
 use tokio::sync::broadcast::Receiver;
 use url::Url;
 
-use crate::abi::IBridgedWorldID::IBridgedWorldIDInstance;
+use crate::{
+    abi::IBridgedWorldID::IBridgedWorldIDInstance,
+    utils::{retry, RetryConfig},
+};
 
-/// Maximum numbers to retry a `relayRoot` request before terminating
-const MAX_RETRIES: usize = 50;
-
-/// How long we should wait before retrying a failed `relayRoot` request
-const RELAY_ROOT_RETRY_MIN_BACKOFF: Duration = Duration::from_millis(10);
-
-/// Maximum exponential backoff to wait before retrying a failed `relayRoot` request
-const RELAY_ROOT_RETRY_MAX_BACKOFF: Duration = Duration::from_secs(300);
+static RETRY_CONFIG: RetryConfig = RetryConfig {
+    min_delay: Duration::from_millis(10),
+    max_delay: Duration::from_secs(300),
+    max_times: 50,
+};
 
 // Two Mainnet Blocks
 pub const ROOT_PROPAGATION_BACKOFF: u64 = 24;
@@ -78,28 +77,23 @@ impl Relay for EVMRelay {
             let field = rx.recv().await?;
             let world_id = world_id_instance.clone();
 
-            let f = || async {
-                // refetch latest as the contract may have been updated from another relayer
-                let latest = world_id.latestRoot().call().await?._0;
+            retry(
+                || async {
+                    let latest = world_id.latestRoot().call().await?._0;
 
-                if latest != field {
-                    self.signer.propagate_root().await?;
-                }
+                    if latest != field {
+                        self.signer.propagate_root().await?;
+                    }
 
-                tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");
+                    tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");
 
-                Ok::<(), eyre::Report>(())
-            };
-
-            f.retry(
-                backon::ExponentialBuilder::default()
-                    .with_min_delay(RELAY_ROOT_RETRY_MIN_BACKOFF)
-                    .with_max_delay(RELAY_ROOT_RETRY_MAX_BACKOFF)
-                    .with_max_times(MAX_RETRIES),
+                    Ok::<(), eyre::Report>(())
+                },
+                &RETRY_CONFIG,
+                "Failed to propagate root, retrying",
+                "Failed to propagate root",
             )
-            .notify(|e, duration| {
-                tracing::error!(error = %e, root = %field, total_time_retried = ?duration, provider = %self.provider, "Failed to propagate root");
-            }).await?;
+            .await?;
         }
     }
 }
