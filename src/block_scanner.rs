@@ -1,6 +1,5 @@
 use std::{
-    fmt::Debug, future::Future, marker::PhantomData, sync::Arc,
-    time::Duration,
+    fmt::Debug, future::Future, marker::PhantomData, sync::Arc, time::Duration,
 };
 
 use alloy::{
@@ -82,17 +81,20 @@ where
                     // Update the latest block number only if required
                     if try_to > latest {
                         let provider = self.provider.clone();
-                        latest = retry(
-                            move || {
-                                let provider = provider.clone();
-                                async move { Ok(provider.get_block_number().await?) }
-                            },
-                            &RETRY_CONFIG,
-                            "Failed to fetch latest block, retrying",
-                            "Retry limit reached fetching latest block",
-                        )
-                        .await
-                        .expect("failed to fetch latest block after retry");
+                        latest =
+                            retry(
+                                move || {
+                                    let provider = provider.clone();
+                                    async move {
+                                        Ok(provider.get_block_number().await?)
+                                    }
+                                },
+                                &RETRY_CONFIG,
+                                "Failed to fetch latest block, retrying",
+                                "Retry limit reached fetching latest block",
+                            )
+                            .await
+                            .expect("failed to fetch latest block after retry");
 
                         if latest < next_block {
                             tokio::time::sleep(Duration::from_secs(
@@ -143,7 +145,7 @@ where
     pub fn root_stream(&self) -> impl Stream<Item = TreeChanged> + '_ {
         self.block_stream().buffered(10).flat_map(|logs| {
             let fut = async move {
-                let logs: Vec<Log> = logs.unwrap();
+                let logs: Vec<Log> = logs.expect("block stream emitted error");
                 stream::iter(logs.into_iter().filter_map(|log| {
                     TreeChanged::decode_log(&log.inner, false)
                         .ok()
