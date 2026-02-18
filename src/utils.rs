@@ -1,31 +1,38 @@
 use std::{future::Future, time::Duration};
 
-use tracing::{error, warn};
+use backon::Retryable;
 
-pub async fn retry<S, F, T, E>(
-    mut backoff: Duration,
-    limit: Option<Duration>,
-    f: S,
-) -> Result<T, E>
+pub struct RetryConfig {
+    pub min_delay: Duration,
+    pub max_delay: Duration,
+    pub max_times: usize,
+}
+
+pub async fn retry<F, Fut, T>(
+    f: F,
+    config: &RetryConfig,
+    retry_msg: &str,
+    exhausted_msg: &str,
+) -> Result<T, eyre::Report>
 where
-    F: Future<Output = Result<T, E>> + Send + 'static,
-    S: Fn() -> F + Send + Sync + 'static,
-    E: std::fmt::Debug,
+    F: Fn() -> Fut,
+    Fut: Future<Output = Result<T, eyre::Report>>,
 {
-    loop {
-        match f().await {
-            Ok(res) => return Ok(res),
-            Err(e) => {
-                warn!("{e:?}");
-                if let Some(limit) = limit {
-                    if backoff > limit {
-                        error!("Retry limit reached: {e:?}");
-                        return Err(e);
-                    }
-                }
-                tokio::time::sleep(backoff).await;
-                backoff *= 2;
-            }
-        }
-    }
+    let retry_msg = retry_msg.to_owned();
+    let exhausted_msg = exhausted_msg.to_owned();
+
+    f.retry(
+        backon::ExponentialBuilder::default()
+            .with_min_delay(config.min_delay)
+            .with_max_delay(config.max_delay)
+            .with_max_times(config.max_times),
+    )
+    .notify(move |e: &eyre::Report, dur| {
+        tracing::warn!(error = ?e, retry_in = ?dur, "{}", retry_msg);
+    })
+    .await
+    .map_err(|e| {
+        tracing::error!(error = ?e, "{}", exhausted_msg);
+        e
+    })
 }

@@ -1,5 +1,6 @@
 use std::{
-    fmt::Debug, future::Future, marker::PhantomData, sync::Arc, time::Duration,
+    fmt::Debug, future::Future, marker::PhantomData, sync::Arc,
+    time::Duration,
 };
 
 use alloy::{
@@ -15,7 +16,16 @@ use futures::{stream, FutureExt as _, Stream, StreamExt as _};
 use telemetry_batteries::reexports::metrics::gauge;
 use tracing::trace;
 
-use crate::{abi::IWorldIDIdentityManager::TreeChanged, utils::retry};
+use crate::{
+    abi::IWorldIDIdentityManager::TreeChanged,
+    utils::{retry, RetryConfig},
+};
+
+static RETRY_CONFIG: RetryConfig = RetryConfig {
+    min_delay: Duration::from_millis(100),
+    max_delay: Duration::from_secs(60),
+    max_times: 10,
+};
 
 pub const BLOCK_SCANNER_SLEEP_TIME: u64 = 5;
 
@@ -73,15 +83,17 @@ where
                     if try_to > latest {
                         let provider = self.provider.clone();
                         latest = retry(
-                            Duration::from_millis(100),
-                            Some(Duration::from_secs(60)),
                             move || {
                                 let provider = provider.clone();
-                                async move { provider.get_block_number().await }
+                                async move { Ok(provider.get_block_number().await?) }
                             },
+                            &RETRY_CONFIG,
+                            "Failed to fetch latest block, retrying",
+                            "Retry limit reached fetching latest block",
                         )
                         .await
                         .expect("failed to fetch latest block after retry");
+
                         if latest < next_block {
                             tokio::time::sleep(Duration::from_secs(
                                 BLOCK_SCANNER_SLEEP_TIME,
@@ -106,11 +118,7 @@ where
                 let provider = self.provider.clone();
                 let chain_id = self.chain_id;
 
-                // This future is yielded from the stream
-                // and is awaited on by the caller
                 let fut = retry(
-                    Duration::from_millis(100),
-                    Some(Duration::from_secs(60)),
                     move || {
                         let provider = provider.clone();
                         let filter = filter.clone();
@@ -121,6 +129,9 @@ where
                             Ok(logs)
                         }
                     },
+                    &RETRY_CONFIG,
+                    "Failed to fetch logs, retrying",
+                    "Retry limit reached fetching logs",
                 );
 
                 Some((fut, (to_block + 1, latest)))
