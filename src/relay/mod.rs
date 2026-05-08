@@ -6,6 +6,7 @@ use alloy::{
     primitives::{Address, U256},
     providers::ProviderBuilder,
 };
+use eyre::eyre::WrapErr;
 use eyre::Result;
 use signer::{RelaySigner, Signer};
 use tokio::sync::broadcast::Receiver;
@@ -79,10 +80,25 @@ impl Relay for EVMRelay {
 
             retry(
                 || async {
-                    let latest = world_id.latestRoot().call().await?._0;
+                    let latest = world_id
+                        .latestRoot()
+                        .call()
+                        .await
+                        .wrap_err_with(|| {
+                            format!(
+                                "Failed to fetch latestRoot from L2 contract {} via {} while propagating root={field}",
+                                self.world_id_address, self.provider,
+                            )
+                        })?
+                        ._0;
 
                     if latest != field {
-                        self.signer.propagate_root().await?;
+                        self.signer.propagate_root().await.wrap_err_with(|| {
+                            format!(
+                                "Failed to call propagateRoot for root={field} on contract {} via {}",
+                                self.world_id_address, self.provider,
+                            )
+                        })?;
                     }
 
                     tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");

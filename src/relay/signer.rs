@@ -12,8 +12,8 @@ use alloy::{
     },
 };
 use ethers_core::types::U256;
-use eyre::eyre::{eyre, Result};
-use tracing::{debug, error, info};
+use eyre::eyre::{eyre, Result, WrapErr};
+use tracing::{debug, info};
 use tx_sitter_client::{
     data::{SendTxRequest, TransactionPriority, TxStatus},
     TxSitterClient,
@@ -87,14 +87,14 @@ impl RelaySigner for AlloySigner {
 
         let transport = state_bridge_instance.propagateRoot().send().await?;
 
-        match transport.get_receipt().await {
-            Ok(receipt) => {
-                debug!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
-            }
-            Err(e) => {
-                error!(error = ?e, "Failed to propogate Root to State Bridge.");
-            }
-        }
+        let receipt = transport.get_receipt().await.wrap_err_with(|| {
+            format!(
+                "Failed to get receipt for propagateRoot tx to State Bridge {}",
+                self.state_bridge_address,
+            )
+        })?;
+
+        debug!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
 
         Ok(())
     }
