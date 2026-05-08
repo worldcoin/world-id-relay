@@ -12,8 +12,8 @@ use alloy::{
     },
 };
 use ethers_core::types::U256;
-use eyre::eyre::{eyre, Result};
-use tracing::{debug, error, info};
+use eyre::eyre::{eyre, Result, WrapErr};
+use tracing::{debug, info};
 use tx_sitter_client::{
     data::{SendTxRequest, TransactionPriority, TxStatus},
     TxSitterClient,
@@ -85,16 +85,27 @@ impl RelaySigner for AlloySigner {
             self.provider.clone(),
         );
 
-        let transport = state_bridge_instance.propagateRoot().send().await?;
+        let transport = state_bridge_instance
+            .propagateRoot()
+            .send()
+            .await
+            .wrap_err_with(|| {
+                format!(
+                    "failed to send propagateRoot transaction \
+                    (state_bridge_address={})",
+                    self.state_bridge_address,
+                )
+            })?;
 
-        match transport.get_receipt().await {
-            Ok(receipt) => {
-                debug!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
-            }
-            Err(e) => {
-                error!(error = ?e, "Failed to propogate Root to State Bridge.");
-            }
-        }
+        let receipt = transport.get_receipt().await.wrap_err_with(|| {
+            format!(
+                "failed to get receipt for propagateRoot transaction \
+                (state_bridge_address={})",
+                self.state_bridge_address,
+            )
+        })?;
+
+        debug!(receipt = ?receipt, "Successfully propogated Root to State Bridge.");
 
         Ok(())
     }
@@ -143,8 +154,11 @@ impl RelaySigner for TxSitterSigner {
 
         let resp = self.tx_sitter.send_tx(&send_tx).await.map_err(|e| {
             eyre!(
-                "Failed to send root propogation transaction to tx sitter: {}",
-                e
+                "failed to send root propagation transaction to tx sitter \
+                (state_bridge_address={}, gas_limit={}): {}",
+                self.state_bridge_address,
+                send_tx.gas_limit,
+                e,
             )
         })?;
 
@@ -158,7 +172,13 @@ impl RelaySigner for TxSitterSigner {
         loop {
             let tx_response =
                 self.tx_sitter.get_tx(&resp.tx_id).await.map_err(|e| {
-                    eyre!("Failed to get tx status from tx sitter: {}", e)
+                    eyre!(
+                        "failed to get root propagation transaction status from tx sitter \
+                        (tx_id={}, state_bridge_address={}): {}",
+                        resp.tx_id,
+                        self.state_bridge_address,
+                        e,
+                    )
                 })?;
 
             match tx_response.status {
@@ -178,7 +198,13 @@ impl RelaySigner for TxSitterSigner {
             }
 
             if start.elapsed() > timeout {
-                return Err(eyre!("Root propogation transaction timed out"));
+                return Err(eyre!(
+                    "root propagation transaction timed out \
+                    (tx_id={}, state_bridge_address={}, timeout_secs={})",
+                    resp.tx_id,
+                    self.state_bridge_address,
+                    timeout.as_secs(),
+                ));
             }
 
             std::thread::sleep(backoff);

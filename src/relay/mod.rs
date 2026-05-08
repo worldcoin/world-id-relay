@@ -6,6 +6,7 @@ use alloy::{
     primitives::{Address, U256},
     providers::ProviderBuilder,
 };
+use eyre::eyre::WrapErr;
 use eyre::Result;
 use signer::{RelaySigner, Signer};
 use tokio::sync::broadcast::Receiver;
@@ -77,12 +78,41 @@ impl Relay for EVMRelay {
             let field = rx.recv().await?;
             let world_id = world_id_instance.clone();
 
+            let retry_msg = format!(
+                "Failed to propagate root, retrying \
+                (root={field}, provider={}, world_id_address={})",
+                self.provider, self.world_id_address,
+            );
+            let exhausted_msg = format!(
+                "Failed to propagate root \
+                (root={field}, provider={}, world_id_address={})",
+                self.provider, self.world_id_address,
+            );
+
             retry(
                 || async {
-                    let latest = world_id.latestRoot().call().await?._0;
+                    let latest = world_id
+                        .latestRoot()
+                        .call()
+                        .await
+                        .wrap_err_with(|| {
+                            format!(
+                                "failed to fetch latest root before propagation \
+                                (root={field}, provider={}, world_id_address={})",
+                                self.provider, self.world_id_address,
+                            )
+                        })?
+                        ._0;
 
                     if latest != field {
-                        self.signer.propagate_root().await?;
+                        self.signer.propagate_root().await.wrap_err_with(|| {
+                            format!(
+                                "failed to submit root propagation transaction \
+                                (root={field}, previous_root={latest}, provider={}, \
+                                world_id_address={})",
+                                self.provider, self.world_id_address,
+                            )
+                        })?;
                     }
 
                     tracing::info!(root = %field, previous_root=%latest, provider = %self.provider, "Root propagated successfully");
@@ -90,8 +120,8 @@ impl Relay for EVMRelay {
                     Ok::<(), eyre::Report>(())
                 },
                 &RETRY_CONFIG,
-                "Failed to propagate root, retrying",
-                "Failed to propagate root",
+                &retry_msg,
+                &exhausted_msg,
             )
             .await?;
         }

@@ -28,11 +28,11 @@ where
             .with_max_times(config.max_times),
     )
     .notify(move |e: &eyre::Report, dur| {
-        tracing::warn!(error = ?e, retry_in = ?dur, "{}", retry_msg);
+        tracing::warn!(error = %e, error_details = ?e, retry_in = ?dur, "{}", retry_msg);
     })
     .await
     .map_err(|e| {
-        tracing::error!(error = ?e, "{}", exhausted_msg);
+        tracing::error!(error = %e, error_details = ?e, "{}", exhausted_msg);
         e
     })
 }
