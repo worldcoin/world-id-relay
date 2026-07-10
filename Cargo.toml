@@ -28,7 +28,7 @@ futures = "0.3"
 hex = "0.4"
 hyper = { version = "1", features = ["server", "http1", "http2"] }
 tx-sitter-client = { git = "https://github.com/worldcoin/signup-sequencer", rev = "f30275b" }
-rand = { version = "0.8.5", features = ["small_rng"] }
+rand = { version = "0.10", features = ["small_rng"] }
 rayon = "1.10.0"
 ruint = "1.11.0"
 serde = { version = "1.0.214", features = ["derive"] }
